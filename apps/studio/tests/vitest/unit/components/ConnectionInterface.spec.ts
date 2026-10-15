@@ -1,18 +1,23 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import Vue from 'vue'
 import Vuex from 'vuex'
 import { TestOrmConnection } from '@tests/lib/TestOrmConnection'
 import { UsedConnection } from '@/common/appdb/models/used_connection'
 import { AppDbHandlers } from '@/handlers/appDbHandlers'
+import { LicenseModule } from '@/store/modules/LicenseModule'
 import ConnectionInterface from '@/components/ConnectionInterface.vue'
+import OracleForm from '@/components/connection/OracleForm.vue'
 
 Vue.use(Vuex)
 
 // split.js needs real DOM geometry, and only drives the sidebar gutter.
-jest.mock('split.js', () => jest.fn(() => ({
-  destroy: jest.fn(),
-  getSizes: () => [25, 75],
-})))
+vi.mock('split.js', () => ({
+  default: vi.fn(() => ({
+    destroy: vi.fn(),
+    getSizes: () => [25, 75],
+  })),
+}))
 
 const WORKSPACE_ID = -1
 
@@ -32,7 +37,6 @@ function buildStore(connectCalls: any[]) {
       username: 'testuser',
     } as any,
     getters: {
-      isUltimate: () => true,
       isCloud: () => false,
       workspace: () => ({ id: WORKSPACE_ID }),
     },
@@ -45,19 +49,17 @@ function buildStore(connectCalls: any[]) {
       'data/connections': {
         namespaced: true,
         state: { items: [] },
-        actions: { remove: jest.fn() },
+        actions: { remove: vi.fn() },
       },
       'data/connectionFolders': { namespaced: true, state: { items: [] } },
-      licenses: {
-        namespaced: true,
-        getters: { isTrial: () => false, trialLicense: () => null },
-      },
+      // the real module, left at its default status (no license synced)
+      licenses: LicenseModule,
       settings: { namespaced: true, getters: { privacyMode: () => false } },
       pinnedConnections: {
         namespaced: true,
-        actions: { loadPins: jest.fn(), reorder: jest.fn(), remove: jest.fn() },
+        actions: { loadPins: vi.fn(), reorder: vi.fn(), remove: vi.fn() },
       },
-      credentials: { namespaced: true, actions: { load: jest.fn() } },
+      credentials: { namespaced: true, actions: { load: vi.fn() } },
     },
   })
 }
@@ -95,7 +97,10 @@ describe('ConnectionInterface', () => {
     wrapper = shallowMount(ConnectionInterface as any, {
       store: buildStore(connectCalls),
       mocks: {
-        $config: { appVersion: '0.0.0', defaults: { connectionTypes: [] } },
+        $config: {
+          appVersion: '0.0.0',
+          defaults: { connectionTypes: [{ name: 'Oracle', value: 'oracle' }] },
+        },
         $util: {
           send: async (channel: string, args: any) => {
             const handler = (AppDbHandlers as any)[channel]
@@ -105,9 +110,9 @@ describe('ConnectionInterface', () => {
         },
         $bks: { unlock: async () => ({ auth: null, cancelled: false }) },
         $confirm: async () => true,
-        $noty: { error: jest.fn(), success: jest.fn(), warning: jest.fn() },
-        registerHandlers: jest.fn(),
-        unregisterHandlers: jest.fn(),
+        $noty: { error: vi.fn(), success: vi.fn(), warning: vi.fn() },
+        registerHandlers: vi.fn(),
+        unregisterHandlers: vi.fn(),
       },
     })
   })
@@ -186,5 +191,30 @@ describe('ConnectionInterface', () => {
     await wrapper.vm.remove({ ...saved, workspaceId: WORKSPACE_ID })
 
     expect(wrapper.vm.config.id).toBeNull()
+  })
+
+  it('oracle connects without license', async () => {
+    const saved = await AppDbHandlers['appdb/saved/save']({
+      obj: {
+        connectionType: 'oracle',
+        name: 'Oracle Conn',
+        host: 'oracle.example.com',
+        workspaceId: WORKSPACE_ID,
+      },
+      options: {},
+    } as any)
+
+    await wrapper.vm.edit({ ...saved, workspaceId: WORKSPACE_ID })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.config.connectionType).toBe('oracle')
+    expect(wrapper.findComponent(OracleForm).exists()).toBe(true)
+
+    const connect = wrapper.findAll('button').filter((b: any) => b.text() === 'Connect')
+    expect(connect).toHaveLength(1)
+    expect(connect.at(0).attributes('disabled')).toBeUndefined()
+
+    expect(wrapper.text()).not.toMatch(/upgrade/i)
+    expect(wrapper.html()).not.toMatch(/upgrade-(alert|panel)/i)
   })
 })

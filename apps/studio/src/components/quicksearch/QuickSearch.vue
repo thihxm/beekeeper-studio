@@ -146,7 +146,6 @@ import { mapActions, mapGetters, mapState } from 'vuex'
 import { AppEvent } from '@/common/AppEvent'
 import TableIcon from '@/components/common/TableIcon.vue'
 import { escapeHtml } from '@shared/lib/tabulator'
-import { isUltimateType } from '@/common/interfaces/IConnection'
 import { searchItems } from '@/store/modules/SearchModule'
 
 export default Vue.extend({
@@ -195,7 +194,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState(['usedConfig']),
-    ...mapGetters({ database: 'search/database', isUltimate: 'isUltimate' }),
+    ...mapGetters({ database: 'search/database' }),
     ...mapState(['tables']),
     ...mapState('search', ['searching']),
     ...mapState('tabs', { 'tabs': 'tabs' }),
@@ -267,11 +266,6 @@ export default Vue.extend({
           this.$root.$emit('favoriteClick', result.item)
           break;
         case 'connection':
-          if (!this.isUltimate && isUltimateType(result.item.connectionType)) {
-            this.$noty.error('Cannot switch to Ultimate only connection.')
-            return
-          }
-
           try {
             await this.$store.dispatch('disconnect')
             const { auth, cancelled } = await this.$bks.unlock();

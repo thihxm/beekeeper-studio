@@ -175,7 +175,6 @@
 </template>
 <script>
 import { mapState, mapGetters } from 'vuex'
-import { isUltimateType } from '@/common/interfaces/IConnection'
 import SaveConnectionForm from '../../connection/SaveConnectionForm.vue'
 import rawLog from '@bksLogger'
 
@@ -205,7 +204,6 @@ export default {
       workspace: 'workspace',
       connectionColor: 'connectionColor',
       savedConnections: 'data/connections/filteredConnections',
-      isUltimate: 'isUltimate',
       privacyMode: 'settings/privacyMode'
     }),
     connectionName() {
@@ -280,11 +278,6 @@ export default {
       }
     },
     async selectConnection(config) {
-      if (!this.isUltimate && isUltimateType(config?.connectionType)) {
-        this.$noty.error('Cannot switch to Ultimate only connection.')
-        return;
-      }
-
       try {
         await this.$store.dispatch('disconnect')
         const { auth, cancelled } = await this.$bks.unlock();

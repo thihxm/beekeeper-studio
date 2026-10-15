@@ -41,9 +41,6 @@
           />
           <database-icon :type="type.value" />
           <span class="name">{{ type.name }}</span>
-          <i v-if="type.lockedByLicense" class="material-icons ultimate-icon">
-            stars
-          </i>
         </label>
       </div>
       <div class="empty-state" v-else>
@@ -53,10 +50,6 @@
 
     <template #footer="{ close }">
       <div class="footer-wrapper">
-        <upgrade-alert
-          v-if="selectedType?.lockedByLicense"
-          :feature-name="selectedType.name"
-        />
         <div class="actions">
           <button class="btn btn-flat" type="button" @click.prevent="close">
             Cancel
@@ -65,7 +58,7 @@
             class="btn btn-primary"
             type="submit"
             data-testid="connection-type-picker-next"
-            :disabled="!value || selectedType?.lockedByLicense"
+            :disabled="!value"
           >
             Next
           </button>
@@ -93,14 +86,8 @@ import BaseModal from "@/components/common/modals/BaseModal.vue";
 import DatabaseIcon from "@/components/common/DatabaseIcon.vue";
 import { AppEvent, RootBinding } from "@/common/AppEvent";
 import { ConnectionType, ConnectionTypes } from "@/lib/db/types";
-import { isUltimateType } from "@/common/interfaces/IConnection";
-import UpgradeAlert from "@/components/upsell/UpgradeAlert.vue";
-import { mapGetters } from "vuex";
 
-type Type = (typeof ConnectionTypes)[number] & {
-  isCommunity: boolean;
-  lockedByLicense: boolean;
-};
+type Type = (typeof ConnectionTypes)[number];
 
 type OpenOptions = {
   onConfirm: (type: ConnectionType) => void;
@@ -108,7 +95,7 @@ type OpenOptions = {
 };
 
 export default Vue.extend({
-  components: { BaseModal, DatabaseIcon, UpgradeAlert },
+  components: { BaseModal, DatabaseIcon },
   data() {
     return {
       modalName: "connection-type-picker-modal",
@@ -119,20 +106,13 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapGetters(["isCommunity"]),
     rootBindings(): RootBinding[] {
       return [
         { event: AppEvent.openConnectionTypePickerModal, handler: this.open },
       ];
     },
     types(): Type[] {
-      return this.$config.defaults.connectionTypes
-        .map((type) => ({
-          ...type,
-          isCommunity: !isUltimateType(type.value),
-          lockedByLicense: this.isCommunity && isUltimateType(type.value),
-        }))
-        .sort((a, b) => Number(b.isCommunity) - Number(a.isCommunity));
+      return this.$config.defaults.connectionTypes;
     },
     filteredTypes(): Type[] {
       const filter = this.filter.trim().toLowerCase();
@@ -153,9 +133,6 @@ export default Vue.extend({
     },
     handleSubmit(_event: Event, close: Function) {
       if (!this.selectedType) {
-        return;
-      }
-      if (this.selectedType.lockedByLicense) {
         return;
       }
       this.confirmedValue = this.value;
@@ -233,10 +210,6 @@ export default Vue.extend({
   height: 1.8rem;
   line-height: 1.8rem;
   border-radius: 4px;
-
-  .ultimate-icon {
-    font-size: 1rem;
-  }
 
   &:hover,
   &:focus-within {

@@ -21,9 +21,6 @@ interface ImportDefaultDataTypes {
 export const SpecialTypes = ['autoincrement']
 export type Dialect = typeof Dialects[number]
 
-export function isUltimateDialect(d: any) {
-  return ultimateDialects.includes(d)
-}
 export function dialectFor(s: string): Dialect | null {
   switch (s) {
     case 'cockroachdb':

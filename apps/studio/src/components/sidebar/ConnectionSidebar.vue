@@ -410,7 +410,6 @@ export default {
       usedConfigs: 'data/usedconnections/orderedUsedConfigs',
       settings: 'settings/settings',
       isCloud: 'isCloud',
-      isUltimate: 'isUltimate',
       activeWorkspaces: 'credentials/activeWorkspaces',
       pinnedConnections: 'pinnedConnections/pinnedConnections',
       filteredConnections: 'data/connections/filteredConnections',

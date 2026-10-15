@@ -144,7 +144,6 @@
   import CommonAdvanced from './CommonAdvanced.vue'
   import FilePicker from '@/components/common/form/FilePicker.vue'
   import { AzureAuthTypes, AzureAuthType } from '@/lib/db/types';
-  import { AppEvent } from '@/common/AppEvent'
   import _ from 'lodash'
   import { mapState, mapGetters } from 'vuex'
   import CommonEntraId from "@/components/connection/CommonEntraId.vue";
@@ -183,13 +182,6 @@
           this.windowsAuthEnabled = false
           this.config.windowsAuthEnabled = false
           this.config.azureAuthOptions.azureAuthType = undefined
-          return
-        }
-
-        // Integrated (Windows/Kerberos) and Azure auth are both paid features.
-        if (this.$store.getters.isCommunity) {
-          this.$root.$emit(AppEvent.upgradeModal, "Enterprise Authentication");
-          this.authType = 'default'
           return
         }
 

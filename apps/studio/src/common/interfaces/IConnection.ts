@@ -5,25 +5,6 @@ import { IAccessGrant } from "./IAccessGrant"
 
 export type SshMode = null | 'agent' | 'userpass' | 'keyfile'
 
-export function isUltimateType(s: ConnectionType) {
-  const types: ConnectionType[] = [
-    'oracle',
-    'firebird',
-    'cassandra',
-    'libsql',
-    'duckdb',
-    'clickhouse',
-    'mongodb',
-    'sqlanywhere',
-    'trino',
-    'surrealdb',
-    'dynamodb',
-    'snowflake'
-  ]
-  return types.includes(s)
-}
-
-
 export interface ISimpleConnection extends Transport {
   id: number | null
   workspaceId: Nullable<number>

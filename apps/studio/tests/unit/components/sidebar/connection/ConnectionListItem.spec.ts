@@ -13,7 +13,6 @@ function buildStore(savedConnections: any[] = []) {
     state: { workspaceId: -1 },
     getters: {
       isCloud: () => false,
-      isUltimate: () => true,
     },
     modules: {
       'data/connections': {

@@ -77,7 +77,6 @@
 <script>
 import TimeAgo from 'javascript-time-ago'
 import { mapGetters, mapState } from 'vuex'
-import { isUltimateType } from '@/common/interfaces/IConnection'
 import EditableText from '@/components/common/EditableText.vue'
 import { AppEvent } from '@/common/AppEvent';
 
@@ -194,9 +193,6 @@ export default {
 
       event.stopPropagation();
 
-      const canConnect = this.$store.getters.isUltimate
-        ? true
-        : !isUltimateType(this.displayConfig.connectionType)
       const canWrite = this.config.canWrite ?? true;
 
       const options = [
@@ -208,7 +204,6 @@ export default {
         {
           name: 'Connect',
           slug: 'connect',
-          hideIf: !canConnect,
           handler: (blob) => this.doubleClick(blob.item)
         },
         { type: "divider" },

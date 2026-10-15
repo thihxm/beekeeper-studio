@@ -36,10 +36,10 @@ Proof: `! grep -rn '"community"' src/lib/license.ts src/common/appdb/models/Lice
 **C7** - 0 references to `isCommunity`, `isTrial`, `isLifetime` or `isValidStateExpired` in `src/` and `src-commercial/` (AC 5)
 Proof: `! grep -rnE "isCommunity|isTrial|isLifetime|isValidStateExpired" src src-commercial`
 
-**C8** - `ConnectionInterface` mounted with the default store and `connectionType = "oracle"` renders the Oracle form with the Connect button enabled, and does not render `UpgradeAlert`/upsell text (AC 7)
+**C8** - `ConnectionInterface` mounted with the default store and `connectionType = "oracle"` renders the Oracle form with the Connect button enabled, and does not render `UpgradeAlert`/upsell text (AC 7) ✅
 Proof: `VU tests/vitest/unit/components/ConnectionInterface.spec.ts -t "oracle connects without license"`
 
-**C9** - 0 gates on `isUltimateType`/`isUltimateDialect` in components and mixins (AC 7, gates part)
+**C9** - 0 gates on `isUltimateType`/`isUltimateDialect` in components and mixins (AC 7, gates part) ✅
 Proof: `! grep -rnE "isUltimateType|isUltimateDialect" src/components src/mixins src/plugins`
 
 ### S2 - Cloud Workspaces need a subscription · (in S1a + 2 files) · ~6k

@@ -15,7 +15,6 @@
           />
 
           <toggle-form-area
-            v-show="isUltimate"
             title="Runtime Extensions"
             :initially-expanded="extensionChosen"
           >
@@ -112,7 +111,6 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapGetters(['isUltimate']),
     ...mapGetters('settings', { 'sqliteRuntimeExtensions': 'sqliteRuntimeExtensions' }),
     extensionChosen() {
       return this.extensions && this.extensions?.length > 0
