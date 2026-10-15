@@ -205,10 +205,6 @@ export default class NativeMenuActionHandlers implements IMenuActionHandler {
     if (win) win.webContents.send(AppEvent.exportTables)
   }
 
-  upgradeModal = (_menuItem: Electron.MenuItem, win: ElectronWindow) => {
-    if (win) win.webContents.send(AppEvent.upgradeModal);
-  }
-
   importSqlFiles = (_menuItem: Electron.MenuItem, win: ElectronWindow) => {
     if (win) win.webContents.send(AppEvent.promptSqlFilesImport);
   }

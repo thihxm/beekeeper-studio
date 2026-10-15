@@ -27,7 +27,6 @@ export default class {
     this.forward(AppEvent.backupDatabase);
     this.forward(AppEvent.restoreDatabase);
     this.forward(AppEvent.exportTables);
-    this.forward(AppEvent.upgradeModal)
     this.forward(AppEvent.promptSqlFilesImport)
     this.forward(AppEvent.promptConnectionFilesImport)
     this.forward(AppEvent.updatePin)

@@ -37,9 +37,6 @@ export const LicenseModule: Module<State, RootState>  = {
     installationId: null
   }),
   getters: {
-    trialLicense(state) {
-      return state.licenses.find((l) => l.licenseType === 'TrialLicense')
-    },
     realLicenses(state) {
       return state.licenses.filter((l) => l.licenseType !== 'TrialLicense')
     },

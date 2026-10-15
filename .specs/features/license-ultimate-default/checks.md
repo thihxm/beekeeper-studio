@@ -33,7 +33,7 @@ Proof: `! grep -rn '"community"' src/lib/license.ts src/common/appdb/models/Lice
 
 ### S1b - gates removed from consumers · 33 files · 547 KB · ~137k
 
-**C7** - 0 references to `isCommunity`, `isTrial`, `isLifetime` or `isValidStateExpired` in `src/` and `src-commercial/` (AC 5)
+**C7** - 0 references to `isCommunity`, `isTrial`, `isLifetime` or `isValidStateExpired` in `src/` and `src-commercial/` (AC 5) ✅
 Proof: `! grep -rnE "isCommunity|isTrial|isLifetime|isValidStateExpired" src src-commercial`
 
 **C8** - `ConnectionInterface` mounted with the default store and `connectionType = "oracle"` renders the Oracle form with the Connect button enabled, and does not render `UpgradeAlert`/upsell text (AC 7) ✅

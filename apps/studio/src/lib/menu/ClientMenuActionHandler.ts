@@ -17,8 +17,6 @@ export default class ClientMenuActionHandler implements IMenuActionHandler {
   constructor() {
     // TODO: implement
   }
-  upgradeModal = () => send('upgradeModal')
-
   quit = () => send('quit')
   undo = () => send('undo')
   redo = () => send('redo')

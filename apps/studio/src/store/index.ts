@@ -301,14 +301,6 @@ const store = new Vuex.Store<State>({
     versionString(state) {
       return state.server.versionString();
     },
-    // Every user gets the full app. Kept as constants until the remaining
-    // edition gates in components are removed.
-    isCommunity() {
-      return false
-    },
-    isUltimate() {
-      return true
-    },
     canAccessCloudWorkspaces(_state, _getters, _rootState, rootGetters) {
       return rootGetters['licenses/canAccessCloudWorkspaces']
     },

@@ -6,13 +6,6 @@ import { IGroupedUserSettings } from '../transport/TransportUserSetting';
 
 export function menuItems(actionHandler: IMenuActionHandler, settings: IGroupedUserSettings, platformInfo: IPlatformInfo) {
   return {
-    upgradeModal: (label: string) => {
-      return {
-        id: `upgrade-${label}`,
-        label: label,
-        click: actionHandler.upgradeModal
-      }
-    },
     quit: {
       id: 'quit',
       label: platformInfo.isMac ? 'Quit' : 'Exit',

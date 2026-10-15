@@ -49,7 +49,6 @@ export enum AppEvent {
   duplicateDatabaseTable = 'duplicateDatabaseTable',
   backupDatabase = 'backupDatabase',
   restoreDatabase = 'restoreDatabase',
-  upgradeModal = 'upgradeModal',
   /** Triggered when a lifetime (expired subscription) license tries to use cloud workspaces */
   cloudWorkspacesBlocked = 'cloudWorkspacesBlocked',
   toggleExpandTableList = 'toggleExpandTableList',
