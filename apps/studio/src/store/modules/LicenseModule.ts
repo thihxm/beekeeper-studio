@@ -6,7 +6,6 @@ import { CloudError } from '@/lib/cloud/ClientHelpers';
 import { TransportLicenseKey } from '@/common/transport';
 import Vue from "vue"
 import { LicenseStatus } from '@/lib/license';
-import { SmartLocalStorage } from '@/common/LocalStorage';
 import { CloudClient } from '@/lib/cloud/CloudClient';
 
 interface State {
@@ -20,18 +19,12 @@ interface State {
 
 const log = rawLog.scope('LicenseModule')
 
-const oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
-
 // Coalesce overlapping dispatches so a tight loop (or a duplicate mount) can't
 // hammer the license server with identical in-flight requests.
 let inflightUpdateAll: Promise<void> | null = null
 const inflightUpdates = new Map<string, Promise<void>>()
 
 const defaultStatus = new LicenseStatus()
-Object.assign(defaultStatus, {
-  edition: "community",
-  condition: "initial",
-})
 
 export const LicenseModule: Module<State, RootState>  = {
   namespaced: true,
@@ -50,38 +43,11 @@ export const LicenseModule: Module<State, RootState>  = {
     realLicenses(state) {
       return state.licenses.filter((l) => l.licenseType !== 'TrialLicense')
     },
-    licenseDaysLeft(state) {
-      const validUntil = state.status.license.validUntil.getTime()
-      const now = state.now.getTime()
-      return Math.round((validUntil - now) / oneDay);
-    },
     noLicensesFound(state) {
       return state.licenses.length === 0
     },
-    isUltimate(state) {
-      if (!state) return false
-      return state.status.isUltimate
-    },
-    isCommunity(state) {
-      if (!state) return true
-      return state.status.isCommunity
-    },
-    isTrial(state) {
-      if (!state) return true
-      return state.status.isTrial
-    },
-    isValidStateExpired(state) {
-      // this means a license with lifetime perms, but is no longer valid for software updates
-      // so the user has to use an older version of the app.
-      return state.status.isValidDateExpired
-    },
-    isLifetime(state) {
-      // a paid license past its subscription period, still valid for app usage
-      return state.status.isLifetime
-    },
     canAccessCloudWorkspaces(state) {
-      // cloud workspaces need an active subscription, lifetime-only licenses
-      // (and community users) don't get them
+      // cloud workspaces need an active subscription
       return state.status.canAccessCloudWorkspaces
     },
   },
@@ -113,40 +79,27 @@ export const LicenseModule: Module<State, RootState>  = {
       context.commit('installationId', installationId)
       context.commit('setInitialized', true)
     },
-    async add(context, { email, key, trial }) {
-      if (trial) {
-        try {
-          await Vue.prototype.$util.send('license/createTrialLicense')
-          await Vue.prototype.$noty.info("Your 14 day free trial has started, enjoy!")
-        } catch (error) {
-          log.error("Failed to create trial license", error)
-          await Vue.prototype.$noty.error("Unable to start trial: a license already exists")
-          return
-        }
-      } else {
-        // Get the installation ID from the backend
-        const installationId = context.state.installationId
+    async add(context, { email, key }) {
+      // Get the installation ID from the backend
+      const installationId = context.state.installationId
 
-        const result = await CloudClient.getLicense(
-          window.platformInfo.cloudUrl,
-          email,
-          key,
-          installationId,
-          window.platformInfo
-        );
+      const result = await CloudClient.getLicense(
+        window.platformInfo.cloudUrl,
+        email,
+        key,
+        installationId,
+        window.platformInfo
+      );
 
-        // if we got here, license is good.
-        const license = {} as TransportLicenseKey;
-        license.key = key;
-        license.email = email;
-        license.validUntil = new Date(result.validUntil);
-        license.supportUntil = new Date(result.supportUntil);
-        license.maxAllowedAppRelease = result.maxAllowedAppRelease;
-        license.licenseType = result.licenseType;
-        await Vue.prototype.$util.send('appdb/license/save', { obj: license });
-      }
-      // allow emitting expired license events next time
-      SmartLocalStorage.setBool('expiredLicenseEventsEmitted', false)
+      // if we got here, license is good.
+      const license = {} as TransportLicenseKey;
+      license.key = key;
+      license.email = email;
+      license.validUntil = new Date(result.validUntil);
+      license.supportUntil = new Date(result.supportUntil);
+      license.maxAllowedAppRelease = result.maxAllowedAppRelease;
+      license.licenseType = result.licenseType;
+      await Vue.prototype.$util.send('appdb/license/save', { obj: license });
       await context.dispatch('sync')
     },
     async update(_context, license: TransportLicenseKey) {
@@ -231,9 +184,6 @@ export const LicenseModule: Module<State, RootState>  = {
     async remove(context, license) {
       await Vue.prototype.$util.send('license/remove', { id: license.id })
       await context.dispatch('sync')
-      if (context.getters.isCommunity && context.rootState.workspaceId !== -1) {
-        context.commit('workspaceId', -1, { root: true })
-      }
     },
     async sync(context) {
       const status = await Vue.prototype.$util.send('license/getStatus')
@@ -241,10 +191,10 @@ export const LicenseModule: Module<State, RootState>  = {
       context.commit('set', licenses)
       context.commit('setStatus', status)
       context.commit('setNow', new Date())
-      // Licenses on lifetime terms don't include cloud workspaces, so if the
-      // subscription lapsed while a cloud workspace was active, drop back to
+      // Cloud workspaces need an active subscription, so if it lapsed (or the
+      // license was removed) while a cloud workspace was active, drop back to
       // the local workspace.
-      if (context.getters.isLifetime && context.rootState.workspaceId !== -1) {
+      if (!context.getters.canAccessCloudWorkspaces && context.rootState.workspaceId !== -1) {
         context.commit('workspaceId', -1, { root: true })
       }
     },

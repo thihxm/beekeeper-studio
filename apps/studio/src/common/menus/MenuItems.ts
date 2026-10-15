@@ -353,28 +353,16 @@ export function menuItems(actionHandler: IMenuActionHandler, settings: IGroupedU
       submenu: [
         { label: ">>> BEWARE: ALL LICENSES WILL BE LOST! <<<" },
         {
-          label: "First time install, no license, no trial.",
-          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.firstInstall),
+          label: "No license",
+          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.noLicense),
         },
         {
-          label: "On a trial license",
-          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.onTrial),
+          label: "Active license (cloud workspaces allowed)",
+          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.activeLicense),
         },
         {
-          label: "Trial expired",
-          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.trialExpired),
-        },
-        {
-          label: "On an active paid license",
-          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.activePaidLicense),
-        },
-        {
-          label: "On an expired, lifetime license, that covers this version",
-          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.expiredLifetimeCoversThisVersion),
-        },
-        {
-          label: "On an expired, lifetime license, that covers an earlier version",
-          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.expiredLifetimeCoversEarlierVersion),
+          label: "Expired support (cloud workspaces blocked)",
+          click: (item, win) => actionHandler.switchLicenseState(item, win, DevLicenseState.expiredSupport),
         },
       ],
     },

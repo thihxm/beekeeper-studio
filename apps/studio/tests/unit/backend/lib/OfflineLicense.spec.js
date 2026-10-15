@@ -125,8 +125,8 @@ describe("Offline License", () => {
     expect(status).toBeInstanceOf(Object)
     expect(status.fromFile).toBeTruthy()
     expect(status.filePath).toEqual(goodOfflineLicense.path)
-    expect(status.isUltimate).toBeDefined()
-    expect(status.isCommunity).toBeDefined()
+    expect(status.edition).toEqual("ultimate")
+    expect(status.canAccessCloudWorkspaces).toBeDefined()
   })
 
   it("Should return null from toLicenseKey() for invalid license", async () => {

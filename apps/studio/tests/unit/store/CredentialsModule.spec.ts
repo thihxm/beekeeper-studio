@@ -10,7 +10,7 @@ jest.mock('@/lib/cloud/CloudClient')
 const mockSend = jest.fn()
 Vue.prototype.$util = { send: mockSend }
 
-function buildStore(options: { isLifetime: boolean, lastUsedWorkspace: number }) {
+function buildStore(options: { canAccessCloudWorkspaces: boolean, lastUsedWorkspace: number }) {
   return new Vuex.Store({
     state: { workspaceId: LocalWorkspace.id },
     mutations: {
@@ -23,7 +23,7 @@ function buildStore(options: { isLifetime: boolean, lastUsedWorkspace: number })
       licenses: {
         namespaced: true,
         getters: {
-          isLifetime: () => options.isLifetime,
+          canAccessCloudWorkspaces: () => options.canAccessCloudWorkspaces,
         },
       },
       settings: {
@@ -53,7 +53,7 @@ describe('CredentialsModule', () => {
 
   describe('setUserWorkspace', () => {
     it('restores the last used cloud workspace on an active subscription', async () => {
-      const store = buildStore({ isLifetime: false, lastUsedWorkspace: 42 })
+      const store = buildStore({ canAccessCloudWorkspaces: true, lastUsedWorkspace: 42 })
       seedCloudWorkspace(store)
 
       await store.dispatch('credentials/setUserWorkspace')
@@ -65,8 +65,8 @@ describe('CredentialsModule', () => {
       expect(store.state.workspaceId).toBe(42)
     })
 
-    it('does not restore a cloud workspace on a lifetime license', async () => {
-      const store = buildStore({ isLifetime: true, lastUsedWorkspace: 42 })
+    it('does not restore a cloud workspace without cloud access', async () => {
+      const store = buildStore({ canAccessCloudWorkspaces: false, lastUsedWorkspace: 42 })
       seedCloudWorkspace(store)
 
       await store.dispatch('credentials/setUserWorkspace')
@@ -75,8 +75,8 @@ describe('CredentialsModule', () => {
       expect(store.state.workspaceId).toBe(LocalWorkspace.id)
     })
 
-    it('still restores the local workspace on a lifetime license', async () => {
-      const store = buildStore({ isLifetime: true, lastUsedWorkspace: LocalWorkspace.id })
+    it('still restores the local workspace without cloud access', async () => {
+      const store = buildStore({ canAccessCloudWorkspaces: false, lastUsedWorkspace: LocalWorkspace.id })
       seedCloudWorkspace(store)
 
       await store.dispatch('credentials/setUserWorkspace')

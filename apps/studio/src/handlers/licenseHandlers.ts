@@ -6,7 +6,6 @@ import { LicenseStatus } from "@/lib/license";
 import { InstallationId } from "@/common/appdb/models/installation_id";
 
 export interface ILicenseHandlers {
-  "license/createTrialLicense": () => Promise<void>;
   "license/getStatus": () => Promise<LicenseStatus>;
   "license/get": () => Promise<TransportLicenseKey[]>;
   "license/remove": (({ id }: { id: number }) => Promise<void>);
@@ -15,9 +14,6 @@ export interface ILicenseHandlers {
 }
 
 export const LicenseHandlers: ILicenseHandlers = {
-  "license/createTrialLicense": async function () {
-    await LicenseKey.createTrialLicense();
-  },
   "license/remove": async function({ id }){
     const key = await LicenseKey.findOneBy({ id })
     if (key) {
@@ -34,17 +30,8 @@ export const LicenseHandlers: ILicenseHandlers = {
     } else {
       status = await LicenseKey.getLicenseStatus();
     }
-    return {
-      ...status,
-      isUltimate: status.isUltimate,
-      isCommunity: status.isCommunity,
-      isTrial: status.isTrial,
-      isValidDateExpired: status.isValidDateExpired,
-      isSupportDateExpired: status.isSupportDateExpired,
-      isLifetime: status.isLifetime,
-      canAccessCloudWorkspaces: status.canAccessCloudWorkspaces,
-      maxAllowedVersion: status.maxAllowedVersion,
-    };
+    // spread so the status crosses IPC as a plain object
+    return { ...status };
   },
   "license/get": async function () {
     const offline = OfflineLicense.load()

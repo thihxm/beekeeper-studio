@@ -164,9 +164,9 @@ export const CredentialsModule: Module<State, RootState> = {
         return
       }
 
-      // Licenses on lifetime terms (subscription ended) don't include cloud
-      // workspaces, so don't restore the last-used cloud workspace.
-      if (context.rootGetters['licenses/isLifetime']) return
+      // Cloud workspaces need an active subscription, so without one don't
+      // restore the last-used cloud workspace.
+      if (!context.rootGetters['licenses/canAccessCloudWorkspaces']) return
 
       const match = workspaces.find((v: WSWithClient) => v?.workspace?.id === lastUsedWorkspace)
 

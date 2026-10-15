@@ -15,19 +15,10 @@ export const DevHandlers: IDevHandlers = {
     const yesterday = new Date(new Date().setDate(new Date().getDate() - 1));
     const nextMonth = new Date(new Date().setMonth(new Date().getMonth() + 1));
     switch (state) {
-      case DevLicenseState.firstInstall:
+      case DevLicenseState.noLicense:
         await LicenseKey.clear();
         break;
-      case DevLicenseState.onTrial:
-        await LicenseKey.clear();
-        await LicenseKey.createTrialLicense();
-        break;
-      case DevLicenseState.trialExpired: {
-        await LicenseKey.clear();
-        await LicenseKey.createTrialLicense(yesterday, yesterday);
-        break;
-      }
-      case DevLicenseState.activePaidLicense: {
+      case DevLicenseState.activeLicense: {
         await LicenseKey.clear();
         const license = new LicenseKey();
         license.email = "fake_email";
@@ -38,7 +29,7 @@ export const DevHandlers: IDevHandlers = {
         await license.save();
         break;
       }
-      case DevLicenseState.expiredLifetimeCoversThisVersion: {
+      case DevLicenseState.expiredSupport: {
         await LicenseKey.clear();
         const license = new LicenseKey();
         license.email = "fake_email";
@@ -46,23 +37,6 @@ export const DevHandlers: IDevHandlers = {
         license.validUntil = nextMonth;
         license.supportUntil = yesterday;
         license.licenseType = "PersonalLicense";
-        license.maxAllowedAppRelease = {
-          tagName: `v${platformInfo.appVersion}`,
-        };
-        await license.save();
-        break;
-      }
-      case DevLicenseState.expiredLifetimeCoversEarlierVersion: {
-        await LicenseKey.clear();
-        const license = new LicenseKey();
-        license.email = "fake_email";
-        license.key = "fake_key";
-        license.validUntil = nextMonth;
-        license.supportUntil = yesterday;
-        license.licenseType = "PersonalLicense";
-
-        const tagName = 'v0.0.1'
-        license.maxAllowedAppRelease = { tagName };
         await license.save();
         break;
       }

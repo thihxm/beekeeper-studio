@@ -20,7 +20,6 @@ import fs from 'fs'
 import path from 'path'
 import Papa from 'papaparse'
 import { FirebirdData } from '@/shared/lib/dialects/firebird'
-import { LicenseKey } from '@/common/appdb/models/LicenseKey'
 import { TestOrmConnection } from './TestOrmConnection'
 import { buffer as b, uint8 as u } from '@tests/utils'
 import Client_Oracledb from '@shared/lib/knex-oracledb'
@@ -251,7 +250,6 @@ export class DBTestUtil {
 
   async connect() {
     await TestOrmConnection.connect()
-    await LicenseKey.createTrialLicense()
     await this.connection.connect()
     if (this.options.singleClient) {
       this.knex = this.connection.knex

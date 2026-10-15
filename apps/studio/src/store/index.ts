@@ -40,7 +40,6 @@ import { WebPluginManagerStatus } from '@/services/plugin'
 import { MenuBarModule } from './modules/MenuBarModule'
 import { PluginsModule, PluginsState } from './modules/plugins'
 import { VimStoreModule } from './modules/VimStoreModule'
-import { pluralize } from '@/vendor/pluralize'
 
 
 const log = RawLog.scope('store/index')
@@ -302,17 +301,13 @@ const store = new Vuex.Store<State>({
     versionString(state) {
       return state.server.versionString();
     },
-    isCommunity(_state, _getters, _rootState, rootGetters) {
-      return rootGetters['licenses/isCommunity']
+    // Every user gets the full app. Kept as constants until the remaining
+    // edition gates in components are removed.
+    isCommunity() {
+      return false
     },
-    isUltimate(_state, _getters, _rootState, rootGetters) {
-      return rootGetters['licenses/isUltimate']
-    },
-    isTrial(_state, _getters, _rootState, rootGetters) {
-      return rootGetters['licenses/isTrial']
-    },
-    isLifetime(_state, _getters, _rootState, rootGetters) {
-      return rootGetters['licenses/isLifetime']
+    isUltimate() {
+      return true
     },
     canAccessCloudWorkspaces(_state, _getters, _rootState, rootGetters) {
       return rootGetters['licenses/canAccessCloudWorkspaces']
@@ -514,16 +509,9 @@ const store = new Vuex.Store<State>({
 
     updateWindowTitle(context) {
       const config = context.state.usedConfig
-      let title = config
+      const title = config
         ? `${BeekeeperPlugin.buildConnectionName(config)} - Beekeeper Studio`
         : 'Beekeeper Studio'
-      if (context.getters.isTrial && context.getters.isUltimate) {
-        const days = context.rootGetters['licenses/licenseDaysLeft']
-        title += ` - Free Trial (${pluralize('day', days, true)} left)`
-      }
-      if (context.getters.isCommunity) {
-        title += ' - Free Version'
-      }
       context.commit('updateWindowTitle', title)
       window.main.setWindowTitle(title);
     },
