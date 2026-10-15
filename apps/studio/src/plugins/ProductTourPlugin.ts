@@ -52,10 +52,6 @@ const flows: Record<
             return false;
           }
 
-          if (context.store.getters.isCommunity) {
-            return false;
-          }
-
           if (context.store.getters.aiShellHintShown) {
             return false;
           }
@@ -108,10 +104,6 @@ const flows: Record<
             return false;
           }
 
-          if (context.store.getters.isCommunity) {
-            return false;
-          }
-
           if (context.store.getters["settings/editResultsHintShown"]) {
             return false;
           }
@@ -138,10 +130,6 @@ const flows: Record<
         },
         shouldShow(context) {
           if (window.platformInfo.testMode) {
-            return false;
-          }
-
-          if (context.store.getters.isCommunity) {
             return false;
           }
 

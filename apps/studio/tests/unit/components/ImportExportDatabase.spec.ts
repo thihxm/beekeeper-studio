@@ -50,7 +50,6 @@ describe("ImportExportDatabase.vue", () => {
       },
       state: {
         connection: {},
-        isCommunity: false,
       },
       mutations: {
         "exports/addExport": mockCommit,

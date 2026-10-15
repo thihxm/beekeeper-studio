@@ -198,16 +198,10 @@
           <x-button
             v-if="showDryRun"
             class="btn btn-flat btn-small dry-run-btn"
-            :disabled="isCommunity"
             @click="dryRun = !dryRun"
           >
             <x-label>Dry Run</x-label>
-            <i
-              v-if="isCommunity"
-              class="material-icons menu-icon"
-            >stars</i>
             <input
-              v-else
               type="checkbox"
               v-model="dryRun"
             >
@@ -273,12 +267,6 @@
                 >
                   <x-label>{{ runPrimaryText(true) }}</x-label>
                   <x-shortcut :value="displayShortcut('queryEditor.primaryQueryToFileAction')" />
-                  <i
-                    v-if="isCommunity"
-                    class="material-icons menu-icon "
-                  >
-                    stars
-                  </i>
                 </x-menuitem>
                 <x-menuitem
                   @click.prevent="queryFunctions.secondaryWrite"
@@ -286,12 +274,6 @@
                 >
                   <x-label>{{ runSecondaryText(true) }}</x-label>
                   <x-shortcut :value="displayShortcut('queryEditor.secondaryQueryToFileAction')" />
-                  <i
-                    v-if="isCommunity"
-                    class="material-icons menu-icon"
-                  >
-                    stars
-                  </i>
                 </x-menuitem>
               </x-menu>
             </x-button>
@@ -704,7 +686,6 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
     computed: {
       ...mapGetters(['dialect', 'dialectData', 'defaultSchema', 'isCloud', 'aiShellAvailable']),
       ...mapGetters({
-        'isCommunity': 'licenses/isCommunity',
         'userKeymap': 'settings/userKeymap',
       }),
       ...mapState(['usedConfig', 'connectionType', 'database', 'tables', 'storeInitialized', 'connection']),
@@ -1417,10 +1398,6 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
         this.editingResult = false;
       },
       async editResults() {
-        if (this.isCommunity) {
-          this.$root.$emit(AppEvent.upgradeModal, "Editable Query Results")
-          return;
-        }
         if (!this.resultsEditData[this.selectedResult]) {
           const resultEditData: FieldEditData[] = await this.connection.getResultEditData(this.result?.text, this.result.fields);
 
@@ -1607,10 +1584,6 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
         this.$util.removeListener(this.transactionTimeoutListenerId);
       },
       async submitQueryToFile() {
-        if (this.isCommunity) {
-          this.$root.$emit(AppEvent.upgradeModal, 'Query to File')
-          return;
-        }
 
         // run the currently highlighted text (if any) to a file, else all sql
         const query_sql = this.hasSelectedText && this.primaryIsTab ? this.editor.selection : this.unsavedText;
@@ -1621,10 +1594,6 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
         this.trigger( AppEvent.beginExport, { query: query_sql, queryName: queryName });
       },
       async submitCurrentQueryToFile() {
-        if (this.isCommunity) {
-          this.$root.$emit(AppEvent.upgradeModal, 'Query to File')
-          return;
-        }
         if (this.runButtonDisabled) return;
         // run the currently selected query or highlighted (if there are multiple) to a file, else all sql
         let query_sql = ''

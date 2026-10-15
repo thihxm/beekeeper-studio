@@ -56,14 +56,6 @@
           </x-menu>
         </x-button>
       </span>
-      <a
-        @click.prevent="showUpgradeModal"
-        class="btn btn-brand btn-icon btn-upgrade"
-        v-tooltip="'Upgrade for: backup/restore, import from file, larger query results, and more!'"
-        v-if="$store.getters.isCommunity"
-      >
-        <i class="material-icons">stars</i> Upgrade
-      </a>
     </div>
     <x-progressbar v-if="activeTab?.isLoading" />
     <div class="tab-content">
@@ -506,9 +498,6 @@ export default Vue.extend({
       const newTab = Object.assign({}, tab);
       await this.$store.commit('tabs/replaceTab', newTab);
     },
-    showUpgradeModal() {
-      this.$root.$emit(AppEvent.upgradeModal)
-    },
     completeDeleteAction() {
       const { schema, name: dbName, entityType } = this.dbDeleteElementParams
       if (entityType !== 'table' && this.dbAction == 'truncate') {
@@ -813,10 +802,6 @@ export default Vue.extend({
       const { table } = data
       if (table && table.entityType !== 'table') {
         this.$noty.error("You can only import data into a table")
-        return;
-      }
-      if (this.$store.getters.isCommunity) {
-        this.$root.$emit(AppEvent.upgradeModal, 'Import From File')
         return;
       }
       const t = { tabType: 'import-table' }

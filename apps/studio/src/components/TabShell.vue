@@ -181,7 +181,6 @@ export default Vue.extend({
   computed: {
     ...mapGetters(['dialect', 'dialectData', 'defaultSchema']),
     ...mapGetters({
-      'isCommunity': 'licenses/isCommunity',
       'userKeymap': 'settings/userKeymap',
     }),
     ...mapState(['usedConfig', 'connectionType', 'database', 'tables', 'storeInitialized', 'connection']),

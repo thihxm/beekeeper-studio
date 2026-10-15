@@ -64,7 +64,6 @@
     <div class="empty-text">
       Open a table to view its data
     </div>
-    <json-viewer-upsell v-if="$store.getters.isCommunity" />
   </div>
 </template>
 
@@ -90,7 +89,6 @@ import { mapGetters } from "vuex";
 import { EditorMarker, LineGutter } from "@beekeeperstudio/ui-kit";
 import { persistJsonFold } from "@/lib/editor/extensions/persistJsonFold";
 import { partialReadonly } from "@/lib/editor/extensions/partialReadOnly";
-import JsonViewerUpsell from '@/components/upsell/JsonViewerSidebarUpsell.vue'
 import rawLog from "@bksLogger";
 import _ from "lodash";
 import globals from '@/common/globals'
@@ -102,7 +100,7 @@ import { monokaiInit } from "@uiw/codemirror-theme-monokai";
 const log = rawLog.scope("json-viewer");
 
 export default Vue.extend({
-  components: { TextEditor, JsonViewerUpsell },
+  components: { TextEditor },
   props: {
     value: {
       type: [Object, Array],

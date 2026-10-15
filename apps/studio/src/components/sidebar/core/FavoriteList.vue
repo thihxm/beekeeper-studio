@@ -34,10 +34,6 @@
                     @click.prevent="importFromLocal"
                   >
                     <x-label>Import from local workspace</x-label>
-                    <i
-                      v-if="$store.getters.isCommunity"
-                      class="material-icons menu-icon"
-                    >stars</i>
                   </x-menuitem>
                 </x-menu>
               </x-button>
@@ -440,10 +436,6 @@ export default {
       this.$root.$emit(AppEvent.promptQueryExport, query)
     },
     importFromLocal() {
-      if (!this.isCloud) {
-        this.$root.$emit(AppEvent.upgradeModal, 'Cloud Workspaces')
-        return
-      }
       this.$root.$emit(AppEvent.promptQueryImport)
     },
     importFromComputer() {

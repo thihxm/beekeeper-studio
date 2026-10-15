@@ -104,14 +104,13 @@ export const commonColumnMenu = [
   resizeAllColumnsToFixedWidth,
 ];
 
-export function createMenuItem(label: string, shortcut: string | string[] = "", ultimate = false) {
+export function createMenuItem(label: string, shortcut: string | string[] = "") {
   label = `<x-label>${escapeHtml(label)}</x-label>`;
   if (typeof shortcut !== "string") {
     shortcut = shortcut[0];
   }
   if (shortcut) shortcut = `<x-shortcut value="${escapeHtml(shortcut)}" />`;
-  const ultimateIcon = ultimate ? `<i class="material-icons menu-icon">stars</i>` : '';
-  return `<x-menuitem>${label}${shortcut}${ultimateIcon}</x-menuitem>`;
+  return `<x-menuitem>${label}${shortcut}</x-menuitem>`;
 }
 
 export async function buildCopyText(

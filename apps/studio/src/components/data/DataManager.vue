@@ -73,7 +73,7 @@ export default Vue.extend({
     mountAndRefresh() {
       log.info('mount and refresh: ', this.workspace)
       if (!this.workspace) return
-      const scope = this.$store.getters.isUltimate ? this.workspace.type : 'local'
+      const scope = this.workspace.type
       DataModules.forEach((module) => {
         const choice = module[scope]
         if (!choice) throw new Error(`No module defined for ${scope} - ${module.path}`)
