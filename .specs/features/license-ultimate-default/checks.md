@@ -59,7 +59,7 @@ Proof: `VU tests/vitest/unit/handlers/licenseHandlers.spec.ts -t "offline licens
 **C14** - `licenses/sync` with `canAccessCloudWorkspaces === false` and `workspaceId = 5` changes `workspaceId` to `-1` (AC 12) ✅
 Proof: `VU tests/vitest/unit/store/LicenseModule.spec.ts -t "sync without cloud access falls back to local workspace"`
 
-**C15** - `NewWorkspaceButton` with credentials and `canAccessCloudWorkspaces === false` doesn't render the cloud `x-menu`; with `true` it does (AC 13)
+**C15** - `NewWorkspaceButton` with credentials and `canAccessCloudWorkspaces === false` doesn't render the cloud `x-menu`; with `true` it does (AC 13) ✅
 Proof: `VU tests/vitest/unit/components/NewWorkspaceButton.spec.ts -t "cloud menu follows canAccessCloudWorkspaces"`
 
 **C16** - An existing `TrialLicense` row with `validUntil` = tomorrow still gives `canAccessCloudWorkspaces === true` (door 2) ✅

@@ -40,9 +40,7 @@ export default Vue.extend({
       document.location.href = `${this.$config.cloudUrl}/users/sign_up`
     },
     onClick() {
-      if (this.$store.getters.isCommunity) {
-        this.$root.$emit(AppEvent.upgradeModal, 'Cloud Workspaces')
-      } else if (this.$store.getters.isLifetime) {
+      if (!this.$store.getters.canAccessCloudWorkspaces) {
         this.$root.$emit(AppEvent.cloudWorkspacesBlocked)
       }
     },

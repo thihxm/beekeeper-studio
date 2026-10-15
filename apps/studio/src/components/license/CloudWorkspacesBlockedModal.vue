@@ -7,7 +7,7 @@
         </div>
         <div>
           <p>
-            You have a lifetime license, but your subscription has ended. Cloud Workspaces are only available to active subscribers.
+            Cloud Workspaces are only available with an active subscription. Enter a license key with an active subscription to use them.
           </p>
           <p>
             Existing workspace data (saved queries and connections) can be

@@ -103,19 +103,11 @@ components: { NewWorkspaceButton, WorkspaceAvatar, AccountStatusButton, ContentP
       return result.join(" ")
     },
     refresh() {
-      if (this.$store.getters.isCommunity) {
-        this.$root.$emit(AppEvent.upgradeModal, 'Cloud Workspaces')
-        return
-      }
       this.$store.dispatch('credentials/load')
     },
     async click(blob: { workspace: IWorkspace, client: CloudClient, credentialId: number }) {
       const isLocal = blob.workspace.id === LocalWorkspace.id
-      if (!isLocal && this.$store.getters.isCommunity) {
-        this.$root.$emit(AppEvent.upgradeModal, 'Cloud Workspaces')
-        return
-      }
-      if (!isLocal && this.$store.getters.isLifetime) {
+      if (!isLocal && !this.$store.getters.canAccessCloudWorkspaces) {
         this.$root.$emit(AppEvent.cloudWorkspacesBlocked)
         return
       }
