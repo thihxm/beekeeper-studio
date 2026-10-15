@@ -17,6 +17,9 @@ const certSubject = 'SERIALNUMBER=803010247, C=US, ST=Texas, L=Dallas, O="Rathbo
 const bksAiShellPath = path.dirname(require.resolve('@beekeeperstudio/bks-ai-shell/package.json'));
 const bksErDiagramPath = path.dirname(require.resolve('@beekeeperstudio/bks-er-diagram/package.json'));
 
+// Releases (and the electron-updater feed baked into app-update.yml) live on this repo
+const githubPublish = { provider: 'github', owner: 'thihxm', repo: 'beekeeper-studio' }
+
 
 
 module.exports = {
@@ -163,7 +166,7 @@ module.exports = {
     category: "public.app-category.developer-tools",
     "hardenedRuntime": true,
     notarize: true,
-    publish: ['github']
+    publish: [githubPublish]
   },
   linux: {
     icon: './public/icons/png/',
@@ -186,15 +189,13 @@ module.exports = {
         'StartupWMClass': 'beekeeper-studio',
       }
     },
-    publish: ['github']
+    publish: [githubPublish]
   },
   pacman: {
     depends: ["c-ares", "ffmpeg", "gtk3", "llhttp", "libevent", "libvpx", "libxslt", "libxss", "minizip", "nss", "re2", "snappy", "libnotify", "libappindicator-gtk3"]
   },
   deb: {
-    publish: [
-      'github'
-    ],
+    publish: [githubPublish],
     fpm: fpmOptions,
     // when we upgrade Electron we need to check these
     depends: ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1", "libsecret-1-0", "gnupg"]
@@ -216,7 +217,7 @@ module.exports = {
     ]
   },
   rpm: {
-    publish: [ 'github' ],
+    publish: [githubPublish],
     fpm: rpmFpmOptions,
   },
   snapcraft: {
@@ -225,9 +226,7 @@ module.exports = {
     // snap store is done as a separate final step (see publish_snapcraft in
     // studio-publish.yml) so it can be retried without rebuilding when
     // credentials are stale or the store is unavailable.
-    publish: [
-      'github'
-    ],
+    publish: [githubPublish],
     core24: {
       // Build the core24 snap in an isolated LXD container. CI provisions LXD
       // via canonical/setup-lxd on every Linux runner.
@@ -264,7 +263,7 @@ module.exports = {
     icon: './public/icons/png/512x512.png',
     // FIXME: Add AppX/MSIX build back in once certificate issues resolved
     target: ['nsis', 'portable'],
-    publish: ['github'],
+    publish: [githubPublish],
     signtoolOptions: {
       sign: "./build/win/sign.js",
     },
