@@ -18,17 +18,9 @@
         <div v-else>
           <div class="alert alert-info">
             <i class="material-icons-outlined">info</i>
-            <span>Entering a license will unlock premium features such as Oracle, DuckDB, and ClickHouse connections,
-              JSON view, multi-table features, and more. <a
-                href="https://docs.beekeeperstudio.io/support/upgrading-from-the-community-edition/"
-              >Learn
-                more</a>.</span>
+            <span>A license key with an active subscription unlocks Cloud Workspaces. Every other feature works without a license.</span>
           </div>
-          <p>You don't have any licenses registered with the application at the moment. Register a new license below.</p>
-          <p class="text-muted small" v-if="trialLicense">
-            Free trial expiry: {{ timeAgo(trialLicense.validUntil) }}, on {{
-              trialLicense.validUntil.toLocaleDateString() }}
-          </p>
+          <p>No license registered. Register a license below.</p>
           <error-alert :error=" error" />
           <div class="form-group">
             <label for="email">License Name</label>
@@ -69,7 +61,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('licenses', {'licenseStatus': 'status'}),
-    ...mapGetters('licenses', { 'realLicenses': 'realLicenses', 'trialLicense': 'trialLicense'}),
+    ...mapGetters('licenses', { 'realLicenses': 'realLicenses' }),
     license() {
       // there should only ever be 1 license
       return this.realLicenses?.[0]
@@ -87,9 +79,6 @@ export default Vue.extend({
 
     isSubscription(license) {
       return license.supportUntil > new Date('2888-01-1')
-    },
-    timeAgo(date) {
-      return this.$bks.timeAgo(date)
     },
     openModal() {
       console.log("opening license modal")

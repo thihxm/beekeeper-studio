@@ -67,7 +67,7 @@ Proof: `VU tests/vitest/unit/license/keysToStatus.spec.ts -t "active trial row s
 
 ### S3 - no trial or expiry UI · 16 files · 49 KB · ~12k
 
-**C17** - The files `TrialExpiredModal.vue`, `LicenseExpiredModal.vue`, `LifetimeLicenseExpiredModal.vue` and `UpgradeRequiredModal.vue` don't exist, and `App.vue` doesn't reference them (AC 14)
+**C17** - The files `TrialExpiredModal.vue`, `LicenseExpiredModal.vue`, `LifetimeLicenseExpiredModal.vue` and `UpgradeRequiredModal.vue` don't exist, and `App.vue` doesn't reference them (AC 14) ✅
 Proof: `! ls src/components/license/TrialExpiredModal.vue src/components/license/LicenseExpiredModal.vue src/components/license/LifetimeLicenseExpiredModal.vue src/components/upsell/UpgradeRequiredModal.vue 2>/dev/null | grep . && ! grep -nE "TrialExpiredModal|LicenseExpiredModal|LifetimeLicenseExpiredModal|UpgradeRequiredModal" src/App.vue`
 
 **C18** - 0 occurrences of "Free Trial" and "Free Version" in `src/` (AC 15), and 0 of `createTrialLicense` in `src/` and `src-commercial/` (AC 16) ✅

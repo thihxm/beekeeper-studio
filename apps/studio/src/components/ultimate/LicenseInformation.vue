@@ -21,20 +21,8 @@
           <td>{{ status }}</td>
         </tr>
         <tr>
-          <td>Software Updates Until</td>
+          <td>Subscription Until</td>
           <td>{{ license.supportUntil.toLocaleDateString() }}</td>
-        </tr>
-        <tr>
-          <td>Valid for app version</td>
-          <td v-if="expiredLifetime">
-            {{ license.maxAllowedAppRelease.tagName }} or lower
-          </td>
-          <td v-else-if="activeLicense">
-            Any version
-          </td>
-          <td v-else>
-            No access, new license required
-          </td>
         </tr>
       </table>
     </div>
@@ -70,16 +58,9 @@ table.simple-table th {
 export default {
   props: ['license', 'licenseStatus'],
   computed: {
-    activeLicense() {
-      return !this.licenseStatus.isValidDateExpired
-    },
-    expiredLifetime() {
-      return this.licenseStatus.isSupportDateExpired && !this.licenseStatus.isValidDateExpired
-    },
     status() {
-      if (this.expiredLifetime) return "Expired, with lifetime access"
-      if (this.activeLicense) return "Active License"
-      return "Expired, no lifetime access"
+      if (this.licenseStatus.canAccessCloudWorkspaces) return "Active, Cloud Workspaces available"
+      return "Inactive, Cloud Workspaces need an active subscription"
     }
   },
   methods: {

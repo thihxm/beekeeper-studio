@@ -58,12 +58,6 @@ export enum AppEvent {
   dropzoneDrop = 'dropzoneDrop',
   createConfirmModal = 'createConfirmModal',
   showConfirmModal = 'showConfirmModal',
-  /** Triggered when the license valid date or support date has expired */
-  licenseExpired = 'licenseExpired',
-  /** Triggered when the license valid date has expired */
-  licenseValidDateExpired = 'licenseValidDateExpired',
-  /** Triggered when the license support date has expired */
-  licenseSupportDateExpired = 'licenseSupportDateExpired',
   switchLicenseState = 'switchLicenseState',
   toggleBeta = 'toggleBeta',
   switchUserKeymap = 'switchUserKeymap',
