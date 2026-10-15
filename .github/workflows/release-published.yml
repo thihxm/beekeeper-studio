@@ -91,7 +91,7 @@ jobs:
       - name: Determine latest release
         id: latest_release
         run: |
-          latest=$(gh api repos/beekeeper-studio/beekeeper-studio/releases/latest --jq '.tag_name')
+          latest=$(gh api repos/$GITHUB_REPOSITORY/releases/latest --jq '.tag_name')
           echo "Latest release: $latest"
           echo "tag=$latest" >> "$GITHUB_OUTPUT"
         env:
@@ -144,7 +144,7 @@ jobs:
       - name: Download release packages
         run: |
           rm -rf ./artifacts; mkdir artifacts
-          gh release download "$TAG" --repo beekeeper-studio/beekeeper-studio \
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern '*.deb' --pattern '*.rpm' --dir ./artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -205,7 +205,7 @@ jobs:
       - name: Download release snaps
         run: |
           rm -rf ./artifacts; mkdir artifacts
-          gh release download "$TAG" --repo beekeeper-studio/beekeeper-studio \
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern '*.snap' --dir ./artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

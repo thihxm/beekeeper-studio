@@ -330,7 +330,7 @@ jobs:
         with:
           script: |
             const script = require('./.github/scripts/delete_latest_yml.js')
-            const assetsUrl = 'https://api.github.com/repos/beekeeper-studio/beekeeper-studio/releases/${{ needs.create_draft_release.outputs.id }}/assets'
+            const assetsUrl = 'https://api.github.com/repos/${{ github.repository }}/releases/${{ needs.create_draft_release.outputs.id }}/assets'
             const channel = '${{needs.identify_channel.outputs.channel}}'
             await script({ github, core, context }, assetsUrl, channel)
 
