@@ -9,6 +9,11 @@ const localVue = createLocalVue();
 localVue.use(Vuex);
 localVue.mixin(AppEventMixin);
 localVue.config.ignoredElements = [/^x-/];
+// records each element's tooltip binding so a test can read it
+localVue.directive("tooltip", {
+  bind(el, binding) { (el as any).__tooltip = binding.value; },
+  update(el, binding) { (el as any).__tooltip = binding.value; },
+});
 
 const usersA = { name: "users", schema: "public", entityType: "table", columns: [] };
 const ordersA = { name: "orders", schema: "public", entityType: "table", columns: [] };
@@ -23,6 +28,8 @@ interface Options {
   databaseEntities?: Record<string, any>;
   pins?: any[];
   hiddenEntities?: any[];
+  inaccessibleDatabases?: string[];
+  username?: string | null;
 }
 
 function makeStore(opts: Options = {}) {
@@ -32,8 +39,9 @@ function makeStore(opts: Options = {}) {
       database: "a",
       databaseList: opts.databaseList ?? ["a", "b", "c"],
       databaseEntities: opts.databaseEntities ?? {},
+      inaccessibleDatabases: opts.inaccessibleDatabases ?? [],
       entityFilter: { filterQuery: undefined, showTables: true, showViews: true, showRoutines: true, showPartitions: false },
-      usedConfig: { readOnlyMode: false },
+      usedConfig: { readOnlyMode: false, username: opts.username === undefined ? "app_user" : opts.username },
       activeTab: null,
     },
     getters: {
@@ -185,5 +193,41 @@ describe("VirtualTableList database tree", () => {
     expect(item("b", "users").hidden).toBe(true);
     expect(item(null, "users").hidden).toBe(false);
     expect(item("b", "events").hidden).toBe(false);
+  });
+
+  it("locked database is dimmed and does not expand", async () => {
+    const { vm, loadDatabaseEntities } = mountList({ inaccessibleDatabases: ["b"] });
+    await Vue.nextTick();
+
+    const row = databaseRows().wrappers.find((r) => r.find(".table-name").text() === "b");
+    expect(row.classes()).toContain("locked");
+    expect(row.find(".lock-icon").exists()).toBe(true);
+    expect(row.attributes("aria-disabled")).toBe("true");
+    expect(row.attributes("tabindex")).toBe("0");
+
+    await row.find(".folder-btn").trigger("click");
+    vm.handleExpand(null, vm.items.find((i: any) => i.key === "database::b"));
+    expect(loadDatabaseEntities).toHaveBeenCalledTimes(0);
+    expect(vm.items.find((i: any) => i.key === "database::b").expanded).toBe(false);
+
+    const open = databaseRows().wrappers.find((r) => r.find(".table-name").text() === "c");
+    expect(open.classes()).not.toContain("locked");
+    expect(open.attributes("tabindex")).toBeUndefined();
+  });
+
+  it("locked database explains why on hover and focus", async () => {
+    mountList({ inaccessibleDatabases: ["b"] });
+    await Vue.nextTick();
+    const row = databaseRows().wrappers.find((r) => r.find(".table-name").text() === "b");
+    expect((row.element as any).__tooltip).toEqual({
+      content: "No permission to access database b with the current account (app_user)",
+      trigger: "hover focus",
+    });
+    wrapper.destroy();
+
+    mountList({ inaccessibleDatabases: ["b"], username: null });
+    await Vue.nextTick();
+    const anonymous = databaseRows().wrappers.find((r) => r.find(".table-name").text() === "b");
+    expect((anonymous.element as any).__tooltip.content).toBe("No permission to access database b with the current account");
   });
 });

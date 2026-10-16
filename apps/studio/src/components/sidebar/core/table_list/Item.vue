@@ -4,6 +4,8 @@
     :name="source.entity"
     :expanded="source.expanded"
     :is-default="source.isDefault"
+    :locked="source.locked"
+    :locked-title="lockedTitle(source.entity)"
     :status="source.status"
     :error="source.error"
     @expand="onExpand($event, source)"
@@ -77,6 +79,6 @@ export default Vue.extend({
     StatelessRoutineListItem,
     StatelessSidebarFolder,
   },
-  props: ["source", "onExpand", "onPin", "onRetry"],
+  props: ["source", "onExpand", "onPin", "onRetry", "lockedTitle"],
 });
 </script>

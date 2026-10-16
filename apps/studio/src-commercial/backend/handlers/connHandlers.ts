@@ -61,6 +61,7 @@ export interface IConnectionHandlers {
   'conn/getCompletions': ({ cmd, sId, database }: { cmd: string, sId: string, database?: string }) => Promise<string[]>,
   'conn/getShellPrompt': ({ sId, database }: { sId: string, database?: string }) => Promise<string>,
   'conn/executeQuery': ({ queryText, options, sId, database }: { queryText: string, options: any, sId: string, database?: string }) => Promise<NgQueryResult[]>,
+  'conn/listInaccessibleDatabases': ({ sId }: { sId: string }) => Promise<string[]>,
   'conn/listDatabases': ({ filter, sId, database }: { filter?: DatabaseFilterOptions, sId: string, database?: string }) => Promise<string[]>,
   'conn/getTableProperties': ({ table, schema, sId, database }: { table: string, schema?: string, sId: string, database?: string }) => Promise<TableProperties | null>,
   'conn/getQuerySelectTop': ({ table, limit, schema, sId, database }: { table: string, limit: number, schema?: string, sId: string, database?: string }) => Promise<string>,
@@ -414,6 +415,11 @@ export const ConnHandlers: IConnectionHandlers = {
   'conn/listDatabases': async function({ filter, sId, database }: { filter?: DatabaseFilterOptions, sId: string, database?: string }) {
     const connection = await connectionFor(sId, database);
     return await connection.listDatabases(filter);
+  },
+
+  'conn/listInaccessibleDatabases': async function({ sId }: { sId: string }) {
+    const connection = await connectionFor(sId, null);
+    return await connection.listInaccessibleDatabases();
   },
 
   'conn/getTableProperties': async function({ table, schema, sId, database }: { table: string, schema?: string, sId: string, database?: string }) {

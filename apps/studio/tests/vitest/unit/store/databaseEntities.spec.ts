@@ -70,9 +70,11 @@ describe("databaseEntities", () => {
 
     // refreshConnections at the end of disconnect hits unregistered data modules,
     // which vuex reports and skips
+    store.commit("inaccessibleDatabases", ["secret"])
     await store.dispatch("disconnect")
 
     expect(store.state.databaseEntities).toEqual({})
+    expect(store.state.inaccessibleDatabases).toEqual([])
   })
 
   it("loads columns of another database's table from that database, in place", async () => {
@@ -116,5 +118,37 @@ describe("databaseEntities", () => {
     pending["conn/listRoutines"].resolve([{ name: "fn", schema: "public" }])
     await loading
     expect(store.getters.routinesFor("b").map((r) => r.name)).toEqual(["fn"])
+  })
+
+  it("database list records inaccessible databases", async () => {
+    send.mockImplementation(async (channel: string) => {
+      if (channel === "conn/listDatabases") return ["a", "b", "secret"]
+      if (channel === "conn/listInaccessibleDatabases") return ["secret"]
+      return []
+    })
+    await store.dispatch("updateDatabaseList")
+    expect(store.state.inaccessibleDatabases).toEqual(["secret"])
+
+    send.mockImplementation(async (channel: string) => {
+      if (channel === "conn/listDatabases") return ["a", "b", "c"]
+      if (channel === "conn/listInaccessibleDatabases") throw new Error("function has_database_privilege does not exist")
+      return []
+    })
+    await store.dispatch("updateDatabaseList")
+    expect(store.state.inaccessibleDatabases).toEqual([])
+    expect(store.state.databaseList).toEqual(["a", "b", "c"])
+  })
+
+  it("access denied on load locks the database", async () => {
+    send.mockImplementation(async (channel: string) => {
+      if (channel === "conn/listTables") {
+        throw Object.assign(new Error('permission denied for database "b"'), { code: "DATABASE_ACCESS_DENIED" })
+      }
+      return []
+    })
+
+    await store.dispatch("loadDatabaseEntities", { database: "b" })
+
+    expect(store.state.inaccessibleDatabases).toContain("b")
   })
 })

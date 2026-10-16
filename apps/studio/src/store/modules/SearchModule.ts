@@ -98,6 +98,7 @@ export const SearchModule: Module<State, RootState> = {
       // entities of every other database loaded in this session
       for (const [database, entities] of Object.entries(root.databaseEntities)) {
         if (database === root.database || entities.status !== 'loaded') continue
+        if (root.inaccessibleDatabases.includes(database)) continue
         for (const t of entities.tables) {
           const name = t.schema ? `${t.schema}.${t.name}` : t.name
           const title = `${database} · ${name}`
@@ -116,7 +117,7 @@ export const SearchModule: Module<State, RootState> = {
         const title = folder ? `${folder.name} > ${f.name}` : f.name
         return { item: f, type: 'connection', title: `connection: ${title}`, id: `connection-${f.id}`}
       })
-      const databases: IndexItem[] = root.databaseList.map((f) => {
+      const databases: IndexItem[] = root.databaseList.filter((f) => !root.inaccessibleDatabases.includes(f)).map((f) => {
         return { item: f, type: 'database', title: `database: ${f}`, id: `database-${f}`}
       })
       return [...tables, ...favorites, ...connections, ...databases]

@@ -347,6 +347,7 @@ export interface IBasicDatabaseClient {
   getResultEditData(queryText: string, fields: FieldDescriptor[]): Promise<FieldEditData[]>
   executeQuery(queryText: string, options?: any): Promise<NgQueryResult[]>,
   listDatabases(filter?: DatabaseFilterOptions): Promise<string[]>,
+  listInaccessibleDatabases(): Promise<string[]>,
   getTableProperties(table: string, schema?: string): Promise<TableProperties | null>,
   getQuerySelectTop(table: string, limit: number, schema?: string): Promise<string>,
   listMaterializedViews(filter?: FilterOptions): Promise<TableOrView[]>,

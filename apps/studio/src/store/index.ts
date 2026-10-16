@@ -23,6 +23,7 @@ import { HideEntityModule } from './modules/HideEntityModule'
 import { PinConnectionModule } from './modules/PinConnectionModule'
 import { ElectronUtilityConnectionClient } from '@/lib/utility/ElectronUtilityConnectionClient'
 import { connectionForTab } from '@/lib/utility/tabConnection'
+import { DATABASE_ACCESS_DENIED } from '@/lib/db/accessDenied'
 
 import { SmartLocalStorage } from '@/common/LocalStorage'
 
@@ -108,6 +109,8 @@ export interface State {
   databaseList: string[],
   /** keyed by database name; the default database lives in `tables`/`routines` */
   databaseEntities: Record<string, DatabaseEntities>,
+  /** databases the current account can't open, for this session */
+  inaccessibleDatabases: string[],
   tables: TableOrView[],
   routines: Routine[],
   entityFilter: EntityFilter,
@@ -179,6 +182,7 @@ const store = new Vuex.Store<State>({
     database: null,
     databaseList: [],
     databaseEntities: {},
+    inaccessibleDatabases: [],
     tables: [],
     routines: [],
     entityFilter: {
@@ -411,6 +415,7 @@ const store = new Vuex.Store<State>({
       state.versionString = null
       state.databaseList = []
       state.databaseEntities = {}
+      state.inaccessibleDatabases = []
       state.namespace = null
       state.namespaceList = []
       state.tables = []
@@ -428,6 +433,14 @@ const store = new Vuex.Store<State>({
     },
     databaseList(state, dbs: string[]) {
       state.databaseList = dbs
+    },
+    inaccessibleDatabases(state, databases: string[]) {
+      state.inaccessibleDatabases = databases
+    },
+    addInaccessibleDatabase(state, database: string) {
+      if (!state.inaccessibleDatabases.includes(database)) {
+        state.inaccessibleDatabases = [...state.inaccessibleDatabases, database]
+      }
     },
     databaseTableColumns(_state, { table, columns }: { table: TableOrView, columns: TableColumn[] }) {
       Vue.set(table, 'columns', columns)
@@ -786,6 +799,13 @@ const store = new Vuex.Store<State>({
       const databaseList = await context.state.connection.listDatabases();
       log.info("databaseList: ", databaseList)
       context.commit('databaseList', databaseList)
+      // where the dialect can tell, lock databases before anyone tries them
+      try {
+        context.commit('inaccessibleDatabases', await context.state.connection.listInaccessibleDatabases())
+      } catch (e) {
+        log.warn('Could not list inaccessible databases', e)
+        context.commit('inaccessibleDatabases', [])
+      }
     },
     async updateNamespaceList(context) {
       // Just reuse listSchemas cause we don't use it and it's kinda comparable, may be a not great idea
@@ -859,6 +879,7 @@ const store = new Vuex.Store<State>({
         context.commit('databaseEntities', { database, entities: { tables, routines: [], status: 'loaded' } })
       } catch (e) {
         log.error(`Loading entities of database ${database} failed`, e)
+        if (e?.code === DATABASE_ACCESS_DENIED) context.commit('addInaccessibleDatabase', database)
         context.commit('databaseEntities', { database, entities: { tables: [], routines: [], status: 'error', error: e.message } })
         return
       }

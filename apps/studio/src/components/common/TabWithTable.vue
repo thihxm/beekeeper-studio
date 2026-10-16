@@ -1,6 +1,21 @@
 <template>
   <div class="with-table-wrapper">
-    <div v-if="!loaded">
+    <div
+      class="no-content flex"
+      v-if="locked"
+    >
+      <div class="alert alert-danger expand">
+        <i class="material-icons">lock</i>
+        <div class="alert-body expand">
+          No permission to access database {{ otherDatabase }} with the current account
+        </div>
+        <a
+          @click.prevent="$emit('close', tab)"
+          class="btn btn-flat"
+        >Close Tab</a>
+      </div>
+    </div>
+    <div v-else-if="!loaded">
       <x-progressbar />
     </div>
     <div
@@ -35,7 +50,10 @@ const log = rawLog.scope('TabWithTable')
 export default Vue.extend({
   props: ['tab'],
   computed: {
-    ...mapState(['tablesInitialLoaded', 'database', 'databaseEntities']),
+    ...mapState(['tablesInitialLoaded', 'database', 'databaseEntities', 'inaccessibleDatabases']),
+    locked(): boolean {
+      return !!this.otherDatabase && this.inaccessibleDatabases.includes(this.otherDatabase)
+    },
     /** a tab bound to another database than the default one */
     otherDatabase(): string | null {
       const database = this.tab?.databaseName
@@ -60,7 +78,7 @@ export default Vue.extend({
     otherDatabase: {
       immediate: true,
       handler(database: string | null) {
-        if (database) this.$store.dispatch('loadDatabaseEntities', { database })
+        if (database && !this.locked) this.$store.dispatch('loadDatabaseEntities', { database })
       }
     },
   }

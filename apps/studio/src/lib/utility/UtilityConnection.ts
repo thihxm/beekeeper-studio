@@ -72,6 +72,10 @@ export class UtilityConnection {
             detail: errorDetail,
             hint: errorHint,
           })
+          // plugin errors carry their code already; keep the utility's code on the rest
+          if (errorCode != null && !("code" in err)) {
+            Object.assign(err, { code: errorCode })
+          }
 
           err.stack = stack;
           handler.reject(err);

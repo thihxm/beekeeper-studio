@@ -877,6 +877,18 @@ export class PostgresClient extends BasicDatabaseClient<QueryResult, PoolClient>
     return data.rows.map((row) => row.datname);
   }
 
+  async listInaccessibleDatabases(): Promise<string[]> {
+    const sql = `
+      SELECT datname
+      FROM pg_database
+      WHERE NOT datistemplate
+        AND NOT has_database_privilege(datname, 'CONNECT')
+      ORDER BY datname
+    `;
+    const data = await this.driverExecuteSingle(sql);
+    return data.rows.map((row) => row.datname);
+  }
+
   async executeApplyChanges(changes: TableChanges, tabId?: number): Promise<any[]> {
     let results: TableUpdateResult[] = []
 

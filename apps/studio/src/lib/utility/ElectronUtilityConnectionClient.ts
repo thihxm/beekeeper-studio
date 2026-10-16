@@ -134,6 +134,10 @@ export class ElectronUtilityConnectionClient implements IBasicDatabaseClient {
     return await this.send('conn/listDatabases', { filter });
   }
 
+  async listInaccessibleDatabases(): Promise<string[]> {
+    return await this.send('conn/listInaccessibleDatabases', {});
+  }
+
   async getTableProperties(table: string, schema?: string): Promise<TableProperties> {
     return await this.send('conn/getTableProperties', { table, schema });
   }

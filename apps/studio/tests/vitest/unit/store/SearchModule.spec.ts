@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest"
 import { SearchModule } from "@/store/modules/SearchModule"
 
-function rootState() {
+function rootState(inaccessibleDatabases: string[] = []) {
   return {
+    inaccessibleDatabases,
     database: "a",
     databaseList: ["a", "warehouse"],
     tables: [{ name: "users", schema: "public", entityType: "table" }],
@@ -29,5 +30,13 @@ describe("search/database", () => {
 
     const databases = index.filter((i) => i.type === "database").map((i) => i.item)
     expect(databases).toEqual(["a", "warehouse"])
+  })
+
+  it("locked databases are not indexed", () => {
+    const index = (SearchModule.getters as any).database({}, {}, rootState(["warehouse"]))
+
+    const fromWarehouse = index.filter((i) => i.database === "warehouse" || (i.type === "database" && i.item === "warehouse"))
+    expect(fromWarehouse).toHaveLength(0)
+    expect(index.filter((i) => i.type === "database").map((i) => i.item)).toEqual(["a"])
   })
 })

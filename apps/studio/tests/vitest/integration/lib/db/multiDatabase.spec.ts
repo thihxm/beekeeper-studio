@@ -12,6 +12,7 @@ describe("multiple databases on one Postgres server", () => {
 
   let container: StartedTestContainer
   let server: ReturnType<typeof createServer>
+  let baseConfig: IDbConnectionServerConfig
 
   beforeAll(async () => {
     container = await new GenericContainer("postgres:16")
@@ -35,6 +36,7 @@ describe("multiple databases on one Postgres server", () => {
       readOnlyMode: false,
     } as unknown as IDbConnectionServerConfig
 
+    baseConfig = config
     server = createServer(config)
     const a = server.createConnection("a")
     await a.connect()
@@ -45,6 +47,11 @@ describe("multiple databases on one Postgres server", () => {
     await setupB.connect()
     await setupB.executeQuery("CREATE TABLE tb (id int)")
     server.destroyConnection("b")
+
+    // a role that may connect to a but not to secret
+    await a.executeQuery("CREATE DATABASE secret")
+    await a.executeQuery("REVOKE CONNECT ON DATABASE secret FROM PUBLIC")
+    await a.executeQuery("CREATE ROLE limited LOGIN PASSWORD 'limited'")
 
     newState(SID)
     state(SID).server = server
@@ -67,5 +74,19 @@ describe("multiple databases on one Postgres server", () => {
     expect(state(SID).database).toBe("a")
     const activeNames = (await state(SID).connection.listTables()).map((t) => t.name)
     expect(activeNames).toContain("ta")
+  })
+
+  it("lists databases the role cannot connect to", async () => {
+    const limited = createServer({ ...baseConfig, user: "limited", password: "limited" } as IDbConnectionServerConfig)
+    try {
+      const client = limited.createConnection("a")
+      await client.connect()
+      const inaccessible = await client.listInaccessibleDatabases()
+
+      expect(inaccessible).toContain("secret")
+      expect(inaccessible).not.toContain("a")
+    } finally {
+      limited.end()
+    }
   })
 })

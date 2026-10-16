@@ -297,6 +297,11 @@ export abstract class BasicDatabaseClient<RawResultType extends BaseQueryResult,
   abstract query(queryText: string, tabId?: number, options?: any): Promise<CancelableQuery>;
   abstract executeQuery(queryText: string, options?: any): Promise<NgQueryResult[]>;
   abstract listDatabases(filter?: DatabaseFilterOptions): Promise<string[]>;
+
+  /** Databases of the server the current account can't open; empty where the dialect can't tell */
+  async listInaccessibleDatabases(): Promise<string[]> {
+    return [];
+  }
   abstract getTableProperties(table: string, schema?: string): Promise<TableProperties | null>;
   abstract getQuerySelectTop(table: string, limit: number, schema?: string): Promise<string>;
   abstract listMaterializedViews(filter?: FilterOptions): Promise<TableOrView[]>;

@@ -12,6 +12,7 @@ import { FSWatcher } from "fs";
 import fs from "fs";
 import tmp from 'tmp';
 import bksConfig from "@/common/bksConfig";
+import { databaseAccessDeniedError, isDatabaseAccessDenied } from "@/lib/db/accessDenied";
 import rawLog from "@bksLogger";
 
 const log = rawLog.scope("handlerState");
@@ -142,7 +143,8 @@ export async function connectionFor(sId: string, database?: string | null): Prom
       await client.connect();
     } catch (e) {
       s.server.destroyConnection(database);
-      throw e;
+      // a missing permission locks the database in the UI; anything else is shown as is
+      throw isDatabaseAccessDenied(e) ? databaseAccessDeniedError(e) : e;
     }
     client.connectionType = s.connection.connectionType;
     s.clientLastUsed.set(database, Date.now());

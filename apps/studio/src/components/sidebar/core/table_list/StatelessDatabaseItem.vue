@@ -1,7 +1,10 @@
 <template>
   <div
     class="list-item schema-item database-item"
-    :class="{ 'is-default': isDefault }"
+    :class="{ 'is-default': isDefault, locked }"
+    :tabindex="locked ? 0 : null"
+    :aria-disabled="locked ? 'true' : null"
+    v-tooltip="locked ? { content: lockedTitle, trigger: 'hover focus' } : null"
   >
     <div class="folder-group schema">
       <a
@@ -21,6 +24,11 @@
           class="table-name truncate expand"
           :title="name"
         >{{ name }}</span>
+        <i
+          v-if="locked"
+          class="material-icons lock-icon"
+          aria-hidden="true"
+        >lock</i>
         <span
           v-if="isDefault"
           class="database-badge"
@@ -53,11 +61,21 @@
 
 <script lang="ts">
 export default {
-  props: ["name", "expanded", "isDefault", "status", "error"],
+  props: ["name", "expanded", "isDefault", "locked", "lockedTitle", "status", "error"],
 };
 </script>
 
 <style lang="scss" scoped>
+.database-item.locked {
+  opacity: 0.45;
+  .folder-btn {
+    cursor: not-allowed;
+  }
+  .lock-icon {
+    font-size: 0.85rem;
+    margin-left: 0.3rem;
+  }
+}
 .database-badge {
   font-size: 0.7rem;
   opacity: 0.6;

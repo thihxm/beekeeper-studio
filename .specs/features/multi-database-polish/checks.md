@@ -11,43 +11,43 @@ Every proof runs from `apps/studio/`. `VU` = `yarn vitest:unit` and `VI` = `yarn
 
 ### S1 - locked databases · 12 files · 297 KB · ~74k
 
-**C1** - On Postgres, a role without `CONNECT` on database `secret` gets a `listInaccessibleDatabases()` result that contains `secret` and not `a`, the database the role connects to (AC 1, door 2)
+**C1** - On Postgres, a role without `CONNECT` on database `secret` gets a `listInaccessibleDatabases()` result that contains `secret` and not `a`, the database the role connects to (AC 1, door 2) ✅
 Proof: `VI tests/vitest/integration/lib/db/multiDatabase.spec.ts -t "lists databases the role cannot connect to"`
 
-**C2** - `SQLServerClient.listInaccessibleDatabases()` runs SQL that contains `HAS_DBACCESS(name) = 0` and returns the `name` of each returned row (AC 2)
+**C2** - `SQLServerClient.listInaccessibleDatabases()` runs SQL that contains `HAS_DBACCESS(name) = 0` and returns the `name` of each returned row (AC 2) ✅
 Proof: `VU tests/vitest/unit/lib/db/inaccessibleDatabases.spec.ts -t "sql server lists names without db access"`
 
-**C3** - A client that doesn't override it (e.g. MySQL) returns `[]` from `listInaccessibleDatabases()` (AC 3)
+**C3** - A client that doesn't override it (e.g. MySQL) returns `[]` from `listInaccessibleDatabases()` (AC 3) ✅
 Proof: `VU tests/vitest/unit/lib/db/inaccessibleDatabases.spec.ts -t "default is an empty list"`
 
-**C4** - `connectionFor` rejects with `code === "DATABASE_ACCESS_DENIED"` for each of 4 connect errors: Postgres `code 42501`, MySQL `errno 1044`, SQL Server `number 916` and `number 4060`. The table-driven test covers all 4 (AC 4, door 3)
+**C4** - `connectionFor` rejects with `code === "DATABASE_ACCESS_DENIED"` for each of 4 connect errors: Postgres `code 42501`, MySQL `errno 1044`, SQL Server `number 916` and `number 4060`. The table-driven test covers all 4 (AC 4, door 3) ✅
 Proof: `VU tests/vitest/unit/handlers/accessDenied.spec.ts -t "driver access-denied errors become DATABASE_ACCESS_DENIED"`
 
-**C5** - A connect error with Postgres `code 28P01` (bad password) is rethrown as the same error object, without `DATABASE_ACCESS_DENIED` (AC 5)
+**C5** - A connect error with Postgres `code 28P01` (bad password) is rethrown as the same error object, without `DATABASE_ACCESS_DENIED` (AC 5) ✅
 Proof: `VU tests/vitest/unit/handlers/accessDenied.spec.ts -t "other errors pass through unchanged"`
 
-**C6** - When a utility reply has `type: "error"` and `errorCode: "DATABASE_ACCESS_DENIED"`, the promise from `UtilityConnection.send` rejects with an `Error` whose `code` is `DATABASE_ACCESS_DENIED` (AC 6)
+**C6** - When a utility reply has `type: "error"` and `errorCode: "DATABASE_ACCESS_DENIED"`, the promise from `UtilityConnection.send` rejects with an `Error` whose `code` is `DATABASE_ACCESS_DENIED` (AC 6) ✅
 Proof: `VU tests/vitest/unit/lib/utility/UtilityConnection.spec.ts -t "keeps the error code"`
 
-**C7** - When `conn/listInaccessibleDatabases` returns `["secret"]`, `updateDatabaseList` sets `inaccessibleDatabases` to `["secret"]`. When it rejects, it sets `[]` and `databaseList` is still committed (AC 7)
+**C7** - When `conn/listInaccessibleDatabases` returns `["secret"]`, `updateDatabaseList` sets `inaccessibleDatabases` to `["secret"]`. When it rejects, it sets `[]` and `databaseList` is still committed (AC 7) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "database list records inaccessible databases"`
 
-**C8** - When `conn/listTables` for `b` rejects with `code DATABASE_ACCESS_DENIED`, `loadDatabaseEntities("b")` leaves `"b"` in `inaccessibleDatabases` (AC 8)
+**C8** - When `conn/listTables` for `b` rejects with `code DATABASE_ACCESS_DENIED`, `loadDatabaseEntities("b")` leaves `"b"` in `inaccessibleDatabases` (AC 8) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "access denied on load locks the database"`
 
-**C9** - With `"b"` inaccessible, the `b` row has class `locked`, a `.lock-icon` element, `aria-disabled="true"` and `tabindex="0"`, and expanding it dispatches `loadDatabaseEntities` 0 times (AC 9)
+**C9** - With `"b"` inaccessible, the `b` row has class `locked`, a `.lock-icon` element, `aria-disabled="true"` and `tabindex="0"`, and expanding it dispatches `loadDatabaseEntities` 0 times (AC 9) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "locked database is dimmed and does not expand"`
 
-**C10** - The locked `b` row's tooltip binding has content `No permission to access database b with the current account (app_user)` and trigger `hover focus`. With no username, the content is `No permission to access database b with the current account` (AC 10)
+**C10** - The locked `b` row's tooltip binding has content `No permission to access database b with the current account (app_user)` and trigger `hover focus`. With no username, the content is `No permission to access database b with the current account` (AC 10) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "locked database explains why on hover and focus"`
 
-**C11** - After `clearConnection`, `inaccessibleDatabases` is `[]` (AC 11)
+**C11** - After `clearConnection`, `inaccessibleDatabases` is `[]` (AC 11) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "disconnect clears databaseEntities"`
 
-**C12** - With `"b"` inaccessible and `b` holding loaded tables, the `search/database` index has 0 items whose `database` or database-item name is `b` (AC 12)
+**C12** - With `"b"` inaccessible and `b` holding loaded tables, the `search/database` index has 0 items whose `database` or database-item name is `b` (AC 12) ✅
 Proof: `VU tests/vitest/unit/store/SearchModule.spec.ts -t "locked databases are not indexed"`
 
-**C13** - A tab bound to inaccessible `b` renders `No permission to access database b with the current account` and no table slot (AC 13)
+**C13** - A tab bound to inaccessible `b` renders `No permission to access database b with the current account` and no table slot (AC 13) ✅
 Proof: `VU tests/vitest/unit/components/TabWithTable.spec.ts -t "locked database shows the permission message"`
 
 ### S2 - database colors · 7 files · 35 KB · ~9k

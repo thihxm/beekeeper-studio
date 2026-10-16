@@ -720,6 +720,17 @@ export class SQLServerClient extends BasicDatabaseClient<SQLServerResult, Transa
     return data.recordset.map((row) => row.name)
   }
 
+  async listInaccessibleDatabases(): Promise<string[]> {
+    const sql = `
+      SELECT name
+      FROM sys.databases
+      WHERE HAS_DBACCESS(name) = 0
+      ORDER BY name
+    `
+    const { data } = await this.driverExecuteSingle(sql)
+    return data.recordset.map((row) => row.name)
+  }
+
   createUpsertSQL({ schema, name: tableName }: DatabaseEntity, data: {[key: string]: any}, primaryKeys: string[]): string {
     const [PK] = primaryKeys
     const columnsWithoutPK = _.without(Object.keys(data[0]), PK)

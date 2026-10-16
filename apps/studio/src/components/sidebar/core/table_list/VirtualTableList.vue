@@ -8,7 +8,7 @@
     :data-component="itemComponent"
     :estimate-size="estimateItemHeight"
     :keeps="keeps"
-    :extra-props="{ onExpand: handleExpand, onPin: handlePin, onRetry: handleRetry }"
+    :extra-props="{ onExpand: handleExpand, onPin: handlePin, onRetry: handleRetry, lockedTitle }"
   />
 </template>
 
@@ -86,6 +86,8 @@ interface DatabaseItem extends BaseItem {
   type: "database";
   entity: string;
   isDefault: boolean;
+  /** the current account can't open it */
+  locked: boolean;
   status: "idle" | "loading" | "loaded" | "error";
   error?: string;
 }
@@ -224,9 +226,11 @@ export default Vue.extend({
             entity: name,
             database: isDefault ? null : name,
             isDefault,
+            locked: !isDefault && this.inaccessibleDatabases.includes(name),
             status: isDefault ? "loaded" : loaded?.status ?? "idle",
             error: loaded?.error,
-            expanded: expanded(key, isDefault),
+            // a locked database never opens, even if it was expanded before the lock
+            expanded: !isDefault && this.inaccessibleDatabases.includes(name) ? false : expanded(key, isDefault),
             hidden: false,
             contextMenu: [],
             parent: root,
@@ -267,7 +271,7 @@ export default Vue.extend({
       return true;
     },
     loadDatabase(item: DatabaseItem, force = false) {
-      if (item.isDefault) return;
+      if (item.isDefault || item.locked) return;
       this.$store.dispatch("loadDatabaseEntities", { database: item.entity, force });
     },
     expandDatabase(name: string) {
@@ -336,6 +340,7 @@ export default Vue.extend({
       }
     },
     handleExpand(_: Event, item: Item) {
+      if (item.type === "database" && item.locked) return;
       item.expanded = !item.expanded;
       if (item.expanded && item.type === "table") {
         this.loadColumns(item);
@@ -423,6 +428,7 @@ export default Vue.extend({
         this.databaseList,
         this.database,
         this.databaseEntities,
+        this.inaccessibleDatabases,
         this.pins,
         this.hiddenEntityRecords,
         this.hiddenSchemaRecords,
@@ -434,7 +440,13 @@ export default Vue.extend({
       minimalMode: "minimalMode",
       dialectData: "dialectData",
     }),
-    ...mapState(["database", "databaseList", "databaseEntities", "entityFilter"]),
+    ...mapState(["database", "databaseList", "databaseEntities", "entityFilter", "inaccessibleDatabases", "usedConfig"]),
+    /** tooltip of a locked database node */
+    lockedTitle() {
+      const username = this.usedConfig?.username;
+      return (name: string) =>
+        `No permission to access database ${name} with the current account${username ? ` (${username})` : ""}`;
+    },
     ...mapState("pins", ["pins"]),
     ...mapState("hideEntities", {
       hiddenEntityRecords: "entities",
