@@ -97,7 +97,8 @@ describe("revealing the active tab's table", () => {
     const b = () => vm.items.find((i: any) => i.key === "database::b");
     expect(b().expanded).toBe(false);
 
-    vm.revealItem("b::table.public.users");
+    // the same event the active tab's header triggers
+    vm.$root.$emit(AppEvent.revealSidebarItem, "b::table.public.users");
     expect(b().expanded).toBe(true);
     expect(loadDatabaseEntities).toHaveBeenCalledTimes(1);
     expect(loadDatabaseEntities.mock.calls[0][1]).toEqual({ database: "b", force: false });

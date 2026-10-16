@@ -99,6 +99,8 @@ listed here and each outcome owes a Coverage row in `checks.md`:
 | 4 · Config key | `[ui.tableList] revealActiveEntity = true` in `default.config.ini`, typed in `bksConfig.d.ts` | A user setting in the settings UI: no settings screen covers the table list today. |
 | 5 · Plugin API (additive) | new request `getDatabases` → `{ name: string, isDefault: boolean, accessible: boolean, color: string \| null }[]`; serialized `query`/`table` tabs gain `databaseName: string \| null`; `runQuery` accepts an optional `database: string` (omitted = default database). Declared in the app as a local extension of `RequestMap` (`AppRequestMap`) until `@beekeeperstudio/plugin` ships the types. Existing requests and payload keys are unchanged. | Changing `getConnectionInfo().databaseName` to the active tab's database: existing plugins read it as the connection's database. |
 
+Note (added during verification, 2026-10-16): door 1's literal says `version ... DEFAULT 1`. The migration uses `DEFAULT 0`, like every other appdb table (`hidden_schemas`, `hidden_entities`). TypeORM's version column manages the value either way.
+
 ## Criteria
 
 ### S1: Locked databases (P1)
