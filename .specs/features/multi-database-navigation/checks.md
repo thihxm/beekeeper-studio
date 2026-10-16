@@ -70,28 +70,28 @@ Proof: `VI tests/vitest/integration/lib/db/multiDatabase.spec.ts -t "lists table
 
 ### S4 - bounded clients with transparent recreate · 4 files · 37 KB · ~9k
 
-**C19** - With `maxOpenDatabases = 2`, non-default clients `b` and `c` open and idle, and `b` least recently used, `connectionFor("d")` disconnects `b`, removes it from `server.db`, then creates `d` (AC 25)
+**C19** - With `maxOpenDatabases = 2`, non-default clients `b` and `c` open and idle, and `b` least recently used, `connectionFor("d")` disconnects `b`, removes it from `server.db`, then creates `d` (AC 25) ✅
 Proof: `VU tests/vitest/unit/handlers/clientLifecycle.spec.ts -t "evicts the least recently used idle client at the limit"`
 
-**C20** - With `maxOpenDatabases = 2` and both `b` and `c` holding a reserved connection, `connectionFor("d")` rejects with a message containing `"2"`, and `createConnection` is not called for `d` (AC 26)
+**C20** - With `maxOpenDatabases = 2` and both `b` and `c` holding a reserved connection, `connectionFor("d")` rejects with a message containing `"2"`, and `createConnection` is not called for `d` (AC 26) ✅
 Proof: `VU tests/vitest/unit/handlers/clientLifecycle.spec.ts -t "rejects at the limit when no client is idle"`
 
-**C21** - With `idleDatabaseTimeout = 5000` and fake timers, a non-default client unused for 5001 ms is disconnected and removed by the sweep. One used 4000 ms ago is kept (AC 27)
+**C21** - With `idleDatabaseTimeout = 5000` and fake timers, a non-default client unused for 5001 ms is disconnected and removed by the sweep. One used 4000 ms ago is kept (AC 27) ✅
 Proof: `VU tests/vitest/unit/handlers/clientLifecycle.spec.ts -t "sweep disconnects clients idle past the timeout"`
 
-**C22** - Neither the sweep nor the limit evicts 3 kinds of client: the active database's client, a client with a reserved connection, or a client with an open transaction (AC 28)
+**C22** - Neither the sweep nor the limit evicts 3 kinds of client: the active database's client, a client with a reserved connection, or a client with an open transaction (AC 28) ✅
 Proof: `VU tests/vitest/unit/handlers/clientLifecycle.spec.ts -t "never evicts active reserved or in-transaction clients"`
 
-**C23** - After `b` is evicted, `connectionFor("b")` creates a new client and a following `listTables` resolves (AC 29)
+**C23** - After `b` is evicted, `connectionFor("b")` creates a new client and a following `listTables` resolves (AC 29) ✅
 Proof: `VU tests/vitest/unit/handlers/clientLifecycle.spec.ts -t "an evicted database is recreated on next use"`
 
-**C24** - After `conn/disconnect`, advancing fake timers by 10 × the sweep interval calls `disconnect` on no client (AC 30)
+**C24** - After `conn/disconnect`, advancing fake timers by 10 × the sweep interval calls `disconnect` on no client (AC 30) ✅
 Proof: `VU tests/vitest/unit/handlers/clientLifecycle.spec.ts -t "disconnect clears the sweep timer"`
 
-**C25** - Evicting a client by limit and by sweep leaves `server.sshTunnel` non-null (AC 31)
+**C25** - Evicting a client by limit and by sweep leaves `server.sshTunnel` non-null (AC 31) ✅
 Proof: `VU tests/vitest/unit/handlers/clientLifecycle.spec.ts -t "eviction keeps the ssh tunnel"`
 
-**C26** - `default.config.ini` `[db.default]` declares `maxOpenDatabases = 5` and `idleDatabaseTimeout = 600000`, and `bksConfig.d.ts` types both keys (door 3)
+**C26** - `default.config.ini` `[db.default]` declares `maxOpenDatabases = 5` and `idleDatabaseTimeout = 600000`, and `bksConfig.d.ts` types both keys (door 3) ✅
 Proof: `grep -nE "^maxOpenDatabases = 5" default.config.ini && grep -nE "^idleDatabaseTimeout = 600000" default.config.ini && grep -c "maxOpenDatabases" src/typings/bksConfig.d.ts && grep -c "idleDatabaseTimeout" src/typings/bksConfig.d.ts`
 
 ### S2 - tabs bound to their database · 14 files · 272 KB · ~68k

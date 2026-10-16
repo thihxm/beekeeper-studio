@@ -9,8 +9,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: string[];
@@ -23,8 +25,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: string[];
@@ -37,8 +41,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -51,8 +57,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -66,9 +74,11 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectionTimeout: number;
+            idleDatabaseTimeout: number;
             idleTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -81,8 +91,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -95,8 +107,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -111,8 +125,10 @@ declare interface IBksConfig {
             autocompleteQuoteCharacter: number;
             columnSampleSize: number;
             cursorFetchTimeout: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -125,8 +141,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -140,9 +158,11 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectionTimeout: number;
+            idleDatabaseTimeout: number;
             idleTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -155,8 +175,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -170,8 +192,10 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectTimeout: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -184,8 +208,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -199,8 +225,10 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectTimeout: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -213,8 +241,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -228,9 +258,11 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectionTimeout: number;
+            idleDatabaseTimeout: number;
             idleTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -243,8 +275,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -258,9 +292,11 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectionTimeout: number;
+            idleDatabaseTimeout: number;
             idleTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -273,8 +309,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -288,9 +326,11 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectionTimeout: number;
+            idleDatabaseTimeout: number;
             idleTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -303,8 +343,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -317,8 +359,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: string[];
@@ -331,8 +375,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: string[];
@@ -345,8 +391,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -360,8 +408,10 @@ declare interface IBksConfig {
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
             connectionTimeout: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -374,8 +424,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];
@@ -388,8 +440,10 @@ declare interface IBksConfig {
             allowSkipToLastPage: boolean;
             autoRollbackWarningWindow: number;
             autocompleteQuoteCharacter: number;
+            idleDatabaseTimeout: number;
             manualTransactionTimeout: number;
             maxConnections: number;
+            maxOpenDatabases: number;
             maxReservedConnections: number;
             paramTypes: {
                 named: any[];

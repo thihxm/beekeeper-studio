@@ -11,6 +11,13 @@ import { MessagePortMain } from "electron";
 import { FSWatcher } from "fs";
 import fs from "fs";
 import tmp from 'tmp';
+import bksConfig from "@/common/bksConfig";
+import rawLog from "@bksLogger";
+
+const log = rawLog.scope("handlerState");
+
+/** How often idle non-default database clients are looked for */
+export const CLIENT_SWEEP_INTERVAL = 60_000;
 
 export interface TempFile {
   fileObject: tmp.FileResult,
@@ -28,6 +35,9 @@ class State {
   database: string = null;
   /** connects in flight for non-active databases, keyed like server.db */
   pendingClients: Map<string, Promise<BasicDatabaseClient<any, any>>> = new Map();
+  /** last use of each non-active database client, keyed like server.db */
+  clientLastUsed: Map<string, number> = new Map();
+  clientSweep: NodeJS.Timeout = null;
   username: string = null;
   queries: Map<string, CancelableQuery> = new Map();
   generator: SqlGenerator = null;
@@ -80,6 +90,7 @@ export async function removeState(id: string): Promise<void> {
     }
   }
   state.tempFiles.clear();
+  stopClientSweep(id);
   states.delete(id);
 }
 
@@ -117,9 +128,13 @@ export async function connectionFor(sId: string, database?: string | null): Prom
   if (pending) return await pending;
 
   const cached = s.server.db(database);
-  if (cached) return cached;
+  if (cached) {
+    s.clientLastUsed.set(database, Date.now());
+    return cached;
+  }
 
   const connecting = (async () => {
+    makeRoomForClient(sId);
     const client = s.server.createConnection(database);
     try {
       await client.connect();
@@ -128,6 +143,8 @@ export async function connectionFor(sId: string, database?: string | null): Prom
       throw e;
     }
     client.connectionType = s.connection.connectionType;
+    s.clientLastUsed.set(database, Date.now());
+    startClientSweep(sId);
     return client;
   })();
   s.pendingClients.set(database, connecting);
@@ -144,3 +161,76 @@ export function checkConnection(sId: string) {
   }
 }
 
+
+function dbConfig(sId: string) {
+  let connectionType: string = state(sId).connection?.connectionType;
+  connectionType = connectionType === 'postgresql' ? 'postgres' : connectionType;
+  return bksConfig.db[connectionType] ?? bksConfig.db.default;
+}
+
+/** A client in use: a reserved connection or an open transaction runs on it */
+function clientBusy(sId: string, client: BasicDatabaseClient<any, any>): boolean {
+  if (client.reservedConnections?.size > 0) return true;
+  return [...state(sId).transactionClients.values()].includes(client);
+}
+
+/** Close a non-active database client; the next connectionFor recreates it */
+function evictClient(sId: string, database: string) {
+  const s = state(sId);
+  log.info(`Closing the client of database ${database}`);
+  s.clientLastUsed.delete(database);
+  s.server.destroyConnection(database);
+}
+
+function evictableClients(sId: string): string[] {
+  const s = state(sId);
+  return [...s.clientLastUsed.keys()].filter((database) => {
+    const client = s.server.db(database);
+    return client && client !== s.connection && database !== s.database && !clientBusy(sId, client);
+  });
+}
+
+/** Keep the non-active clients under maxOpenDatabases before opening another one */
+function makeRoomForClient(sId: string) {
+  const s = state(sId);
+  const max: number = dbConfig(sId).maxOpenDatabases;
+  const open = [...s.clientLastUsed.keys()].filter((database) => {
+    const client = s.server.db(database);
+    return client && client !== s.connection && database !== s.database;
+  });
+  if (open.length < max) return;
+
+  const [leastRecent] = evictableClients(sId)
+    .sort((x, y) => s.clientLastUsed.get(x) - s.clientLastUsed.get(y));
+  if (!leastRecent) {
+    throw new Error(`Too many open databases: the limit is ${max} (maxOpenDatabases), and every open database is in use.`);
+  }
+  evictClient(sId, leastRecent);
+}
+
+/** Close non-active clients idle for longer than idleDatabaseTimeout */
+export function sweepIdleClients(sId: string) {
+  const s = state(sId);
+  if (!s?.server) return;
+  const timeout: number = dbConfig(sId).idleDatabaseTimeout;
+  const now = Date.now();
+  for (const database of evictableClients(sId)) {
+    if (now - s.clientLastUsed.get(database) > timeout) {
+      evictClient(sId, database);
+    }
+  }
+}
+
+export function startClientSweep(sId: string) {
+  const s = state(sId);
+  if (s.clientSweep) return;
+  s.clientSweep = setInterval(() => sweepIdleClients(sId), CLIENT_SWEEP_INTERVAL);
+}
+
+export function stopClientSweep(sId: string) {
+  const s = state(sId);
+  if (!s) return;
+  if (s.clientSweep) clearInterval(s.clientSweep);
+  s.clientSweep = null;
+  s.clientLastUsed.clear();
+}

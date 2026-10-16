@@ -3,7 +3,7 @@ import { IConnection } from "@/common/interfaces/IConnection";
 import { DatabaseFilterOptions, ExtendedTableColumn, FieldDescriptor, FieldEditData, FilterOptions, NgQueryResult, OrderBy, PrimaryKeyColumn, Routine, SchemaFilterOptions, StreamResults, SupportedFeatures, TableChanges, TableColumn, TableFilter, TableIndex, TableInsert, TableOrView, TablePartition, TableProperties, TableResult, TableTrigger, TableUpdateResult } from "@/lib/db/models";
 import { DatabaseElement, IDbConnectionServerConfig } from "@/lib/db/types";
 import { AlterPartitionsSpec, AlterTableSpec, CreateTableSpec, dialectFor, IndexAlterations, RelationAlterations, TableKey } from "@shared/lib/dialects/models";
-import { connectionFor, errorMessages, getDriverHandler, state } from "@/handlers/handlerState";
+import { connectionFor, errorMessages, getDriverHandler, startClientSweep, state, stopClientSweep } from "@/handlers/handlerState";
 import ConnectionProvider from '../lib/connection-provider';
 import { uuidv4 } from "@/lib/uuid";
 import { SqlGenerator } from "@shared/lib/sql/SqlGenerator";
@@ -259,13 +259,20 @@ export const ConnHandlers: IConnectionHandlers = {
       throw new Error(`Could not connect to database: ${e.message}`);
     }
 
+    const previous = state(sId).database;
+    state(sId).clientLastUsed.delete(newDatabase);
     state(sId).connection = connection;
     state(sId).database = newDatabase;
+    if (previous != null && state(sId).server.db(previous)) {
+      state(sId).clientLastUsed.set(previous, Date.now());
+      startClientSweep(sId);
+    }
   },
 
   'conn/clearConnection': async function({ sId }: { sId: string}) {
     const s = state(sId);
     if (!s) return;
+    stopClientSweep(sId);
     s.connection = null;
     s.server = null;
     s.usedConfig = null;
@@ -295,6 +302,7 @@ export const ConnHandlers: IConnectionHandlers = {
     for (const tabId of [...s.transactionTimeouts.keys()]) {
       clearTransactionTimeout(sId, tabId);
     }
+    stopClientSweep(sId);
     // every database client of the server, then the shared ssh tunnel
     if (s.server) {
       s.server.end();
