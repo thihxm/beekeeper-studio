@@ -179,7 +179,9 @@ describe("TableTable.vue — refreshTable re-fetches columns (#4567)", () => {
 
     await refreshTable.call(ctx);
 
-    expect(ctx.$store.dispatch).toHaveBeenCalledWith("updateTableColumns", table);
+    // column loads go through the database-aware action, which hands the
+    // default database (no tab database) to updateTableColumns
+    expect(ctx.$store.dispatch).toHaveBeenCalledWith("updateDatabaseTableColumns", { database: undefined, table });
   });
 });
 

@@ -138,7 +138,14 @@ export default Vue.extend({
     tables() {
       return this.$store.getters.tablesFor(this.tabDatabase())
     },
-    ...mapGetters(['schemas', 'dialect', 'schemaTables', 'dialectData']),
+    ...mapGetters(['dialect', 'dialectData']),
+    /** schemas of the tab's database */
+    schemas() {
+      return _.uniq(this.tables.map((t) => t.schema).filter((s) => !!s))
+    },
+    schemaTables() {
+      return _.map(_.groupBy(this.tables, 'schema'), (tables, schema) => ({ schema, tables }))
+    },
     enabled() {
       return !this.usedConfig.readOnlyMode &&
         !this.dialectData.disabledFeatures?.alter?.everything &&
