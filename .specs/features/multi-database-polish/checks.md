@@ -1,6 +1,6 @@
 # Multi-database polish checks
 
-Profile: light
+Profile: standard
 Plan: `.specs/features/multi-database-polish/plan.md`
 
 32 checks in 4 slices · 5 one-way doors · 0 open
@@ -144,6 +144,34 @@ Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "runQuery on a 
 - Claims naming an IPC payload or error code: C4, C6, C8, C19, C27, C32. Each proof asserts the sent payload or the rejected code.
 - C1 is the only proof against a real database.
 
+## Test policy
+
+The repo's guidelines say where tests live and which runner to use (CLAUDE.md: new tests are Vitest specs under `tests/vitest/`). They don't say which level proves which code, or how much of the input space a proof must assert. These rows answer both for this feature. They are not written into the repo's guidelines; they apply to this feature only.
+
+| Code | Required proofs | Coverage expectation |
+| --- | --- | --- |
+| Decides, reached across a boundary (IPC route, plugin bridge, database) | one at the boundary **and** one at its own layer | the contract at the boundary; one asserted case per row of the decision table at its own layer |
+| Decides, not reached across a boundary | one at its own layer | one asserted case per row of the decision table |
+| Wiring that decides nothing (prop pass-through, event binding, dispatch on mount, modal submit) | one proof that goes through the wiring | the wiring exercised once, from the user action or event the claim starts at |
+| Instrumentation (one forwarded call, no conditional) | none of its own | covered by its consumer's proof |
+
+Evidence:
+
+- `src/lib/db/accessDenied.ts`: maps 5 driver codes (42501, 1044, ER_DBACCESS_DENIED_ERROR, 916, 4060) to one outcome → decides. Proven at its own layer by C4, table-driven.
+- `handlerState.connectionFor` catch: 2 branches (access denied → rethrow with code, else rethrow as is) → decides, reached across IPC. Own layer C4/C5; the code reaching the renderer is C6.
+- `PostgresClient` / `SQLServerClient.listInaccessibleDatabases`: SQL against a database → decides, reached across the database boundary. Real Postgres C1; SQL Server C2 at its own layer (no container in the suite).
+- `conn/listInaccessibleDatabases` handler and `ElectronUtilityConnectionClient.listInaccessibleDatabases`: one forwarded call → instrumentation, covered by C7.
+- store `updateDatabaseList` / `loadDatabaseEntities` lock logic: 3 branches (listed, list failed, load denied) → decides. C7, C8.
+- `VirtualTableList` database node: locked, color, reveal on/off, load on expand → decides. C9, C10, C15, C16, C22, C23.
+- `DatabaseLabelModule.setColor`: 3 branches (default, unsaved connection, saved connection) → decides, reached across appdb IPC. C15, C16, C18; appdb layer C14.
+- `DatabaseLabel.setColor`: 2 branches (row exists, new row) → decides. C14.
+- `sidebarKeyForTab`: 2 decisions (database prefix, entity type) → decides. C20, C21.
+- `PluginStoreService.getDatabases` / `runQuery` / `serializeTab`: decides over databases, access, colors and tab type, reached across the plugin bridge. Own layer C25-C29; bridge C30-C32.
+- Wiring: `Item.vue` props to `StatelessDatabaseItem`, `CoreTabHeader` → `revealSidebarItem`, `CoreInterface` → `databaseLabels/load`, `DatabaseColorModal` submit and its mount in `TableList`, the "Set color" menu entry. Each is proven once through the wiring (C9, C22, C19, C15).
+- Closest analogue in the repo: `tests/vitest/unit/handlers/driverHandlerNullConnection.spec.ts`. It is the same shape (a handler decision proven at its own layer with a stubbed connection).
+
+Cost: 4 wiring proofs and 1 boundary proof beyond the original set, all already added in verification rounds 1 and 2.
+
 ## Swept
 
 - validation: C3, C26 (dialects without the feature return empty lists)
@@ -170,4 +198,4 @@ Size from `wc -c` on the files each slice touches, divided by 4:
 - **Boundary:** C1-C32 closed at `bda383924`
 - **Settled mid-build:** verification rounds 1 and 2 found wiring with no proof: the reveal event, the color modal's open, save and mount, label loading on connect, the utility privilege route, and errno-only MySQL matching. Proof lines were added to C7, C15, C16 and C19 for the tests that now cover it. Existing proofs and claims are unchanged.
 - **Abandoned:** none
-
+- **Profile:** raised from `light` to `standard` by the user on 2026-10-16, after verification rounds kept injecting faults beyond the light profile. `standard` bounds fault injection to one per assertion surface, at most 5.
