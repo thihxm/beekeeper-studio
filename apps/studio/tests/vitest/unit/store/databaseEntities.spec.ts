@@ -151,4 +151,20 @@ describe("databaseEntities", () => {
 
     expect(store.state.inaccessibleDatabases).toContain("b")
   })
+
+  it("the default database's columns load through the default connection", async () => {
+    const users = { name: "users", schema: "public", entityType: "table", columns: [] }
+    store.commit("tables", [users])
+    send.mockImplementation(async (channel: string) => {
+      if (channel === "conn/listTableColumns") return [{ columnName: "id", dataType: "int" }]
+      return []
+    })
+
+    await store.dispatch("updateDatabaseTableColumns", { database: null, table: store.state.tables[0] })
+
+    const call = send.mock.calls.find(([channel]) => channel === "conn/listTableColumns")
+    expect(call[1]).toMatchObject({ table: "users" })
+    expect(call[1]).not.toHaveProperty("database")
+    expect(store.state.tables.find((t) => t.name === "users").columns).toEqual([{ columnName: "id", dataType: "int" }])
+  })
 })
