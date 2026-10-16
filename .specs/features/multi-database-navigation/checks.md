@@ -3,7 +3,7 @@
 Profile: light
 Plan: `.specs/features/multi-database-navigation/plan.md`
 
-37 checks in 4 slices · 3 one-way doors · 0 open
+38 checks in 4 slices · 3 one-way doors · 0 open
 
 Every proof runs from `apps/studio/`. `VU` = `yarn vitest:unit` and `VI` = `yarn vitest:integration`, which is the same runner with `vitest.integration.config.mjs` and needs Docker through `testcontainers`. Both scripts already exist in `package.json`. All new specs are Vitest, as CLAUDE.md requires.
 
@@ -124,6 +124,10 @@ Proof: `VU tests/vitest/unit/handlers/connectionFor.spec.ts -t "transaction time
 **C35** - `TabWithTable` with a tab bound to `b` whose table is not in `tablesFor("b")` renders "does not exist in the selected database" (AC 20)
 Proof: `VU tests/vitest/unit/components/TabWithTable.spec.ts -t "missing table in its database shows the not-found state"`
 
+**C38** - A query tab with `databaseName "b"` shows `b` in its tab header and in the database selector. With `databaseName` equal to the default `a`, both still show `a` (AC 32)
+Proof: `VU tests/vitest/unit/components/QueryDatabaseSelector.spec.ts -t "shows the tab database"`
+Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "query tab header shows its database"`
+
 ### S3 - Quick Search across databases · 3 files · 24 KB · ~6k
 
 **C36** - With `databaseList = ["a","b"]`, default `a`, and `b` loaded with `public.orders`, `search/database` contains 1 table item whose title includes both `b` and `orders`, plus 2 database items, 1 per database (AC 21, AC 22)
@@ -146,6 +150,7 @@ Proof: `VU tests/vitest/unit/components/QuickSearch.spec.ts -t "database result 
 | non-evictable clients (3) | active C22 · reserved C22 · in transaction C22 | - |
 | eviction triggers (2) | limit C19 · idle sweep C21 | - |
 | eviction outcomes at the limit (2) | idle client exists C19 · none idle C20 | - |
+| query tab database display places (2) | tab header C38 · editor selector C38 | - |
 | tab types bound to a database (3) | table C28 · table-properties C28 · query C30 | - |
 | `databaseName` values on a tab (2) | set C29 · null C29 | - |
 | Quick Search result kinds touched (2) | table C37 · database C37 | - |

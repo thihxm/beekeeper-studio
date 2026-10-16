@@ -109,6 +109,7 @@ default database). No columns or types here beyond the door.
 18. WHILE a query tab has an active transaction or a reserved connection, its database selector SHALL be disabled
 19. WHEN a transaction timeout fires THEN the rollback SHALL run on the client that started the transaction
 20. IF a bound tab's table is not found in its database's entities THEN the tab SHALL show the existing "does not exist" state
+32. WHILE a query tab is open, the system SHALL show its database name in the tab header and in the query editor's database selector, whether or not it equals the default database (added at the user's request on 2026-10-15: once the dropdown stops moving query tabs, the bound database must be visible)
 
 **Independent test:** open `a.public.users` and `b.public.orders` side by side, run a query in each, switch the default database, and both keep working after an app restart.
 
@@ -171,6 +172,7 @@ default database). No columns or types here beyond the door.
 | screen sidebar tree | destructive action confirms | n/a - no new destructive action |
 | screen table/query tab | error (table missing in its database) | AC 20 |
 | screen query editor database selector | disabled state | AC 18 |
+| screen query tab header | which database the tab runs on | AC 32 |
 | screen Quick Search | result shows database | AC 21 |
 | screen Quick Search | empty state | existing - tab history when the term is empty |
 | IPC `conn/*` | error shape | AC 4 - the driver error is passed through; `noServer` unchanged |
