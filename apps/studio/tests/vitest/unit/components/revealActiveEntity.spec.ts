@@ -93,26 +93,33 @@ describe("selection key of the active tab", () => {
 });
 
 describe("closing a tab", () => {
-  const clear = ((CoreTabs as any).options ?? CoreTabs).methods.clearSidebarSelectionFor;
+  const close = ((CoreTabs as any).options ?? CoreTabs).methods.close;
   const context = (selected: string) => ({
+    closingTab: null,
+    activeTab: null,
+    lastTab: null,
     selectedSidebarItem: selected,
-    $store: { state: { database: "a" }, commit: vi.fn() },
+    trigger: vi.fn(),
+    previousTab: vi.fn(),
+    nextTab: vi.fn(),
+    $confirmById: vi.fn(async () => true),
+    $store: { state: { database: "a" }, dispatch: vi.fn(async () => undefined), commit: vi.fn() },
   });
 
-  it("clears the selection of a closed tab in another database", () => {
+  it("clears the selection of a closed tab in another database", async () => {
     const ctx = context("b::table.public.users");
-    clear.call(ctx, { tabType: "table", tableName: "users", schemaName: "public", entityType: "table", databaseName: "b" });
+    await close.call(ctx, { tabType: "table", tableName: "users", schemaName: "public", entityType: "table", databaseName: "b", unsavedChanges: false });
     expect(ctx.$store.commit).toHaveBeenCalledWith("selectSidebarItem", null);
 
     // a view's structure tab: the key is the entity type, not the tab type
     const view = context("view.public.v");
-    clear.call(view, { tabType: "table-properties", tableName: "v", schemaName: "public", entityType: "view", databaseName: "a" });
+    await close.call(view, { tabType: "table-properties", tableName: "v", schemaName: "public", entityType: "view", databaseName: "a", unsavedChanges: false });
     expect(view.$store.commit).toHaveBeenCalledWith("selectSidebarItem", null);
 
     // another table stays selected
     const other = context("table.public.orders");
-    clear.call(other, { tabType: "table", tableName: "users", schemaName: "public", entityType: "table", databaseName: "a" });
-    expect(other.$store.commit).not.toHaveBeenCalled();
+    await close.call(other, { tabType: "table", tableName: "users", schemaName: "public", entityType: "table", databaseName: "a", unsavedChanges: false });
+    expect(other.$store.commit).not.toHaveBeenCalledWith("selectSidebarItem", null);
   });
 });
 

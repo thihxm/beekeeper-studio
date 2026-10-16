@@ -300,7 +300,7 @@ import ImportTable from './TabImportTable.vue'
 import DatabaseBackup from './TabDatabaseBackup.vue'
 import PluginShell from './TabPluginShell.vue'
 import PluginBase from './TabPluginBase.vue'
-import { sidebarKeyForTab } from '@/common/sidebarKey'
+import { closedTabWasSelected } from '@/common/sidebarKey'
 import { AppEvent } from '../common/AppEvent'
 import { mapGetters, mapState } from 'vuex'
 import Draggable from 'vuedraggable'
@@ -1053,12 +1053,7 @@ export default Vue.extend({
         await this.$store.dispatch('data/queries/reload', tab.queryId)
       }
 
-      this.clearSidebarSelectionFor(tab)
-    },
-    /** A closed tab's entity stops being the sidebar selection */
-    clearSidebarSelectionFor(tab: TransportOpenTab) {
-      const closingSidebarItem = sidebarKeyForTab(tab, this.$store.state.database);
-      if (closingSidebarItem && closingSidebarItem === this.selectedSidebarItem) {
+      if (closedTabWasSelected(tab, this.selectedSidebarItem, this.$store.state.database)) {
         this.$store.commit('selectSidebarItem', null);
       }
     },

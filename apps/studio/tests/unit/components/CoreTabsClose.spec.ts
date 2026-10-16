@@ -12,7 +12,7 @@ function context(overrides: Record<string, any> = {}) {
     activeTab: null,
     selectedSidebarItem: null,
     trigger: jest.fn(),
-    $store: { dispatch: jest.fn().mockResolvedValue(undefined), commit: jest.fn() },
+    $store: { state: { database: null }, dispatch: jest.fn().mockResolvedValue(undefined), commit: jest.fn() },
     $confirmById: jest.fn().mockResolvedValue(true),
     lastTab: null,
     previousTab: jest.fn(),

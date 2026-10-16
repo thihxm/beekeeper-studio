@@ -13,3 +13,13 @@ export function sidebarKeyForTab(
   const prefix = database != null && database !== defaultDatabase ? `${database}::` : '';
   return `${prefix}${tab.entityType || 'table'}.${tab.schemaName ?? null}.${tab.tableName}`;
 }
+
+/** Closing this tab should clear the sidebar selection: it points at the tab's entity */
+export function closedTabWasSelected(
+  tab: Pick<TransportOpenTab, 'tableName' | 'schemaName' | 'entityType' | 'databaseName'>,
+  selectedSidebarItem: string | null,
+  defaultDatabase: string | null
+): boolean {
+  const key = sidebarKeyForTab(tab, defaultDatabase);
+  return !!key && key === selectedSidebarItem;
+}
