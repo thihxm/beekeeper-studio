@@ -20,16 +20,37 @@ import type { UtilityConnection } from "@/lib/utility/UtilityConnection";
 import { PluginMenuManager } from "./PluginMenuManager";
 import { PrimaryKeyColumn } from "@/lib/db/models";
 
+/** One database of the connection, as plugins see it */
+export interface PluginDatabase {
+  name: string;
+  isDefault: boolean;
+  accessible: boolean;
+  color: string | null;
+}
+
+/**
+ * Requests this app answers beyond the published `@beekeeperstudio/plugin`
+ * types, until the package ships them: `getDatabases`, and an optional
+ * `database` on `runQuery`. Existing requests keep their shape.
+ */
+export type AppRequestMap = Omit<RequestMap, "runQuery"> & {
+  getDatabases: { args: void; return: PluginDatabase[] };
+  runQuery: {
+    args: RequestMap["runQuery"]["args"] & { database?: string };
+    return: RequestMap["runQuery"]["return"];
+  };
+};
+
 // Discriminated union for request+result that TypeScript can narrow by name
 type PluginResponseData = {
-  [K in keyof RequestMap]: {
+  [K in keyof AppRequestMap]: {
     id: string;
     name: K;
-    args: RequestMap[K]["args"];
-    result: RequestMap[K]["return"];
+    args: AppRequestMap[K]["args"];
+    result: AppRequestMap[K]["return"];
     error?: unknown;
   };
-}[keyof RequestMap];
+}[keyof AppRequestMap];
 
 // This should probably be moved to the plugin packge
 export type PluginNotificationData = {
@@ -163,6 +184,9 @@ export default class WebPluginLoader {
 
       switch (response.name) {
         // ========= READ ACTIONS ===========
+        case "getDatabases":
+          response.result = this.pluginStore.getDatabases();
+          break;
         case "getSchemas":
           response.result = await this.context.utility.send("conn/listSchemas");
           break;
@@ -246,7 +270,7 @@ export default class WebPluginLoader {
 
         // ======== WRITE ACTIONS ===========
         case "runQuery":
-          response.result = await this.pluginStore.runQuery(response.args.query);
+          response.result = await this.pluginStore.runQuery(response.args.query, response.args.database);
           break;
         case "setData":
         case "setEncryptedData": {

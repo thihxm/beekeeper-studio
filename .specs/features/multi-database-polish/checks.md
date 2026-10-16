@@ -92,28 +92,28 @@ Proof: `grep -nE "^revealActiveEntity = true" default.config.ini && grep -c "rev
 
 ### S4 - plugin API · 2 files · 27 KB · ~7k
 
-**C25** - With databases `["a","b","c"]`, default `a`, `b` inaccessible and `c` purple, `getDatabases` returns 3 entries: `a {isDefault: true, accessible: true, color: null}`, `b {isDefault: false, accessible: false, color: null}`, `c {isDefault: false, accessible: true, color: "purple"}` (AC 25, door 5)
+**C25** - With databases `["a","b","c"]`, default `a`, `b` inaccessible and `c` purple, `getDatabases` returns 3 entries: `a {isDefault: true, accessible: true, color: null}`, `b {isDefault: false, accessible: false, color: null}`, `c {isDefault: false, accessible: true, color: "purple"}` (AC 25, door 5) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "getDatabases lists every database"`
 
-**C26** - With a dialect that sets `multipleDatabases` disabled, `getDatabases` returns `[]` (AC 26)
+**C26** - With a dialect that sets `multipleDatabases` disabled, `getDatabases` returns `[]` (AC 26) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "getDatabases is empty without multiple databases"`
 
-**C27** - `runQuery("select 1", "b")` sends `conn/executeQuery` with `database: "b"`. `runQuery("select 1")` sends it with no `database` key (AC 27)
+**C27** - `runQuery("select 1", "b")` sends `conn/executeQuery` with `database: "b"`. `runQuery("select 1")` sends it with no `database` key (AC 27) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "runQuery runs on the given database"`
 
-**C28** - Serializing a `query` tab with `databaseName "b"` gives `databaseName: "b"`, and one with `null` gives the default `a`. A `table` tab on `b`'s `orders` gives `data.table` equal to `b`'s `orders` entity, and `databaseName: "b"` (AC 28)
+**C28** - Serializing a `query` tab with `databaseName "b"` gives `databaseName: "b"`, and one with `null` gives the default `a`. A `table` tab on `b`'s `orders` gives `data.table` equal to `b`'s `orders` entity, and `databaseName: "b"` (AC 28) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "serialized tabs carry their database"`
 
-**C29** - `getConnectionInfo().databaseName` is `a`, the default database, while the active tab is on `b` (AC 29)
+**C29** - `getConnectionInfo().databaseName` is `a`, the default database, while the active tab is on `b` (AC 29) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "connection info keeps the default database"`
 
-**C30** - The plugin bridge (`WebPluginLoader`) answers a `getDatabases` request with `pluginStore.getDatabases()`, and passes `args.database` to `pluginStore.runQuery` (door 5)
+**C30** - The plugin bridge (`WebPluginLoader`) answers a `getDatabases` request with `pluginStore.getDatabases()`, and passes `args.database` to `pluginStore.runQuery` (door 5) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "bridge routes the new requests"`
 
-**C31** - Disconnected (no connection), `getDatabases` rejects with the `noDatabase` message (Surface outcome)
+**C31** - Disconnected (no connection), `getDatabases` rejects with the `noDatabase` message (Surface outcome) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "getDatabases rejects when disconnected"`
 
-**C32** - `runQuery` on a locked database rejects with `code DATABASE_ACCESS_DENIED` when the utility returns it (Surface outcome)
+**C32** - `runQuery` on a locked database rejects with `code DATABASE_ACCESS_DENIED` when the utility returns it (Surface outcome) ✅
 Proof: `VU tests/vitest/unit/services/pluginDatabases.spec.ts -t "runQuery on a locked database rejects with the access code"`
 
 ## Coverage

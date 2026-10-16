@@ -259,12 +259,30 @@ export default class PluginStoreService {
     };
   }
 
+  /** Every database of the connection, with its access and color */
+  getDatabases() {
+    const { state, getters } = this.store;
+    if (!state.usedConfig) {
+      throw new Error("No database connection found");
+    }
+    if (getters.dialectData?.disabledFeatures?.multipleDatabases) return [];
+    return state.databaseList.map((name: string) => ({
+      name,
+      isDefault: name === state.database,
+      accessible: !state.inaccessibleDatabases.includes(name),
+      color: getters["databaseLabels/colorFor"](name),
+    }));
+  }
+
   serializeTab(tab: TransportOpenTab) {
+    // a tab without a database runs on the connection's default one
+    const databaseName = tab.databaseName ?? this.store.state.database;
     if (tab.tabType === "query") {
       return {
         type: "query",
         id: tab.id,
         title: tab.title,
+        databaseName,
         data: {
           query: tab.unsavedQueryText,
           result: null,
@@ -275,8 +293,9 @@ export default class PluginStoreService {
         type: "table",
         id: tab.id,
         title: tab.title,
+        databaseName,
         data: {
-          table: findTable(tab, this.store.state.tables),
+          table: findTable(tab, this.store.getters.tablesFor(tab.databaseName)),
           filters: [], // FIXME
           result: null, // FIXME
         },
@@ -304,8 +323,10 @@ export default class PluginStoreService {
   }
 
   /* Run query in the background */
-  async runQuery(query: string) {
-    const results = await this.store.state.connection.executeQuery(query);
+  async runQuery(query: string, database?: string) {
+    // omitted, the query runs on the connection's default database
+    const connection = database ? this.store.getters.connectionFor(database) : this.store.state.connection;
+    const results = await connection.executeQuery(query);
 
     return {
       results: results.map(this.serializeQueryResponse),

@@ -44,6 +44,10 @@ flowchart TD
     ACT["CoreTabHeader (exists) - tab activation"] --> KEY["CoreTabHeader (exists) - key with database prefix"]
     KEY --> SEL["store selectSidebarItem (exists)"]
     SEL --> REV["VirtualTableList: expand + scrollToIndex, if revealActiveEntity (door 4)"]
+    PLG["WebPluginLoader (exists) - getDatabases, runQuery database (door 5)"] --> PSS["PluginStoreService (exists)"]
+    PSS --> INA
+    PSS --> DL
+    PSS --> CFG["root store connectionFor (exists)"]
 ```
 
 ## Impact
