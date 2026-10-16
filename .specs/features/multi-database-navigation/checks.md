@@ -130,10 +130,10 @@ Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "query tab head
 
 ### S3 - Quick Search across databases · 3 files · 24 KB · ~6k
 
-**C36** - With `databaseList = ["a","b"]`, default `a`, and `b` loaded with `public.orders`, `search/database` contains 1 table item whose title includes both `b` and `orders`, plus 2 database items, 1 per database (AC 21, AC 22)
+**C36** - With `databaseList = ["a","b"]`, default `a`, and `b` loaded with `public.orders`, `search/database` contains 1 table item whose title includes both `b` and `orders`, plus 2 database items, 1 per database (AC 21, AC 22) ✅
 Proof: `VU tests/vitest/unit/store/SearchModule.spec.ts -t "indexes loaded databases and every database name"`
 
-**C37** - In `QuickSearch`, submitting the `b · public.orders` result emits `AppEvent.loadTable` with `database: "b"`. Submitting the database `b` emits the expand-and-load event with `"b"`, and `changeDatabase` is dispatched 0 times (AC 23, AC 24)
+**C37** - In `QuickSearch`, submitting the `b · public.orders` result emits `AppEvent.loadTable` with `database: "b"`. Submitting the database `b` emits the expand-and-load event with `"b"`, and `changeDatabase` is dispatched 0 times (AC 23, AC 24) ✅
 Proof: `VU tests/vitest/unit/components/QuickSearch.spec.ts -t "table result opens bound to its database"`
 Proof: `VU tests/vitest/unit/components/QuickSearch.spec.ts -t "database result expands instead of switching"`
 

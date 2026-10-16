@@ -11,6 +11,8 @@ export interface IndexItem {
   item: TransportFavoriteQuery | TableOrView | IConnection | string
   type: 'query' | 'table' | 'connection' | 'database'
   id: string
+  /** for tables of a non-default database */
+  database?: string
 }
 
 export interface SearchResult extends IndexItem {
@@ -93,6 +95,15 @@ export const SearchModule: Module<State, RootState> = {
         const title = t.schema ? `${t.schema}.${t.name}` : t.name
         return { item: t, type: 'table', title, id: title }
       })
+      // entities of every other database loaded in this session
+      for (const [database, entities] of Object.entries(root.databaseEntities)) {
+        if (database === root.database || entities.status !== 'loaded') continue
+        for (const t of entities.tables) {
+          const name = t.schema ? `${t.schema}.${t.name}` : t.name
+          const title = `${database} · ${name}`
+          tables.push({ item: t, type: 'table', title, id: `${database}:${name}`, database })
+        }
+      }
       const queryFolders = root['data/queryFolders']['items']
       const favorites: IndexItem[] = root['data/queries']['items'].map((f) => {
         const folder = queryFolders.find((folder) => folder.id === f.queryFolderId)
@@ -105,7 +116,7 @@ export const SearchModule: Module<State, RootState> = {
         const title = folder ? `${folder.name} > ${f.name}` : f.name
         return { item: f, type: 'connection', title: `connection: ${title}`, id: `connection-${f.id}`}
       })
-      const databases: IndexItem[] = root.databaseList.filter(f => f !== root.database).map((f) => {
+      const databases: IndexItem[] = root.databaseList.map((f) => {
         return { item: f, type: 'database', title: `database: ${f}`, id: `database-${f}`}
       })
       return [...tables, ...favorites, ...connections, ...databases]

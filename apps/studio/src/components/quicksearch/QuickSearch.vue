@@ -260,7 +260,7 @@ export default Vue.extend({
       if(!result?.item) return
       switch (result.type) {
         case 'table':
-          this.$root.$emit(AppEvent.loadTable, {table: result.item})
+          this.$root.$emit(AppEvent.loadTable, { table: result.item, database: result.database })
           break;
         case 'query':
           this.$root.$emit('favoriteClick', result.item)
@@ -277,7 +277,9 @@ export default Vue.extend({
           }
           break;
         case 'database':
-          this.$store.dispatch('changeDatabase', result.item)
+          // show it in the tree; switching the default database stays in the dropdown
+          this.$store.dispatch('loadDatabaseEntities', { database: result.item })
+          this.$root.$emit(AppEvent.expandDatabase, result.item)
           break;
         default:
           break;
@@ -288,7 +290,7 @@ export default Vue.extend({
       if(!result?.item) return
 
       if (result.type === 'table') {
-        this.$root.$emit(AppEvent.openTableProperties, { table: result.item })
+        this.$root.$emit(AppEvent.openTableProperties, { table: result.item, database: result.database })
       } else {
         return this.submit(result)
       }
