@@ -23,7 +23,11 @@ class State {
   usedConfig: IConnection = null;
   connection: BasicDatabaseClient<any, any> = null;
   transactionTimeouts: Map<number, NodeJS.Timeout> = new Map();
+  /** the client each tab's open transaction runs on */
+  transactionClients: Map<number, BasicDatabaseClient<any, any>> = new Map();
   database: string = null;
+  /** connects in flight for non-active databases, keyed like server.db */
+  pendingClients: Map<string, Promise<BasicDatabaseClient<any, any>>> = new Map();
   username: string = null;
   queries: Map<string, CancelableQuery> = new Map();
   generator: SqlGenerator = null;
@@ -90,9 +94,47 @@ export const errorMessages = {
 };
 
 export function getDriverHandler(name: string) {
-  return async function({sId }: { sId: string }): Promise<any> {
-    checkConnection(sId);
-    return await state(sId).connection[name]();
+  return async function({ sId, database }: { sId: string, database?: string }): Promise<any> {
+    const connection = await connectionFor(sId, database);
+    return await connection[name]();
+  }
+}
+
+/**
+ * Resolve the client for one database of the current server. The active
+ * database (or no database) is `state.connection`; any other database gets its
+ * own client from the server cache, created and connected on first use.
+ */
+export async function connectionFor(sId: string, database?: string | null): Promise<BasicDatabaseClient<any, any>> {
+  checkConnection(sId);
+  const s = state(sId);
+  if (database == null || database === s.database) return s.connection;
+  if (!s.server) {
+    throw new Error(errorMessages.noServer);
+  }
+
+  const pending = s.pendingClients.get(database);
+  if (pending) return await pending;
+
+  const cached = s.server.db(database);
+  if (cached) return cached;
+
+  const connecting = (async () => {
+    const client = s.server.createConnection(database);
+    try {
+      await client.connect();
+    } catch (e) {
+      s.server.destroyConnection(database);
+      throw e;
+    }
+    client.connectionType = s.connection.connectionType;
+    return client;
+  })();
+  s.pendingClients.set(database, connecting);
+  try {
+    return await connecting;
+  } finally {
+    s.pendingClients.delete(database);
   }
 }
 

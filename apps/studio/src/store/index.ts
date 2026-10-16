@@ -87,6 +87,14 @@ async function resolveEphemeralValues(config: IConnection): Promise<IConnection 
   return config;
 }
 
+/** Entities of one non-default database, loaded on demand */
+export interface DatabaseEntities {
+  tables: TableOrView[],
+  routines: Routine[],
+  status: 'loading' | 'loaded' | 'error',
+  error?: string,
+}
+
 export interface State {
   connection: ElectronUtilityConnectionClient,
   usedConfig: Nullable<IConnection>,
@@ -97,6 +105,8 @@ export interface State {
   supportedFeatures: Nullable<SupportedFeatures>,
   database: Nullable<string>,
   databaseList: string[],
+  /** keyed by database name; the default database lives in `tables`/`routines` */
+  databaseEntities: Record<string, DatabaseEntities>,
   tables: TableOrView[],
   routines: Routine[],
   entityFilter: EntityFilter,
@@ -167,6 +177,7 @@ const store = new Vuex.Store<State>({
     supportedFeatures: null,
     database: null,
     databaseList: [],
+    databaseEntities: {},
     tables: [],
     routines: [],
     entityFilter: {
@@ -196,6 +207,30 @@ const store = new Vuex.Store<State>({
   },
 
   getters: {
+    /** The key the utility caches a database's client under */
+    databaseKey(state) {
+      return (database: string) => state.connectionType === 'surrealdb' ? `${state.namespace}::${database}` : database
+    },
+    /** The client for `database`; the default connection for null or the default database */
+    connectionFor(state, getters) {
+      return (database?: string | null): ElectronUtilityConnectionClient => {
+        if (database == null || database === state.database) return state.connection
+        return state.connection.forDatabase(getters.databaseKey(database))
+      }
+    },
+    /** Entities of `database`; the default database's for null */
+    tablesFor(state) {
+      return (database?: string | null): TableOrView[] => {
+        if (database == null || database === state.database) return state.tables
+        return state.databaseEntities[database]?.tables ?? []
+      }
+    },
+    routinesFor(state) {
+      return (database?: string | null): Routine[] => {
+        if (database == null || database === state.database) return state.routines
+        return state.databaseEntities[database]?.routines ?? []
+      }
+    },
     defaultSchema(state) {
       return state.defaultSchema;
     },
@@ -376,6 +411,7 @@ const store = new Vuex.Store<State>({
       state.defaultSchema = null
       state.versionString = null
       state.databaseList = []
+      state.databaseEntities = {}
       state.namespace = null
       state.namespaceList = []
       state.tables = []
@@ -393,6 +429,13 @@ const store = new Vuex.Store<State>({
     },
     databaseList(state, dbs: string[]) {
       state.databaseList = dbs
+    },
+    databaseEntities(state, { database, entities }: { database: string, entities: Nullable<DatabaseEntities> }) {
+      if (entities) {
+        Vue.set(state.databaseEntities, database, entities)
+      } else {
+        Vue.delete(state.databaseEntities, database)
+      }
     },
     namespaceList(state, nss: string[]) {
       state.namespaceList = nss;
@@ -679,6 +722,14 @@ const store = new Vuex.Store<State>({
       }
 
       await Vue.prototype.$util.send('conn/changeDatabase', { newDatabase: databaseForServer });
+      const previous = context.state.database
+      if (previous != null && previous !== newDatabase) {
+        context.commit('databaseEntities', {
+          database: previous,
+          entities: { tables: context.state.tables, routines: context.state.routines, status: 'loaded' }
+        })
+      }
+      context.commit('databaseEntities', { database: newDatabase, entities: null })
       context.commit('database', newDatabase)
       await context.dispatch('updateTables')
       await context.dispatch('updateDatabaseList')
@@ -697,6 +748,19 @@ const store = new Vuex.Store<State>({
       context.commit('routines', []);
     },
 
+    async updateDatabaseTableColumns(context, { database, table }: { database: string, table: TableOrView }) {
+      if (database == null || database === context.state.database) {
+        return await context.dispatch('updateTableColumns', table)
+      }
+      const connection: ElectronUtilityConnectionClient = context.getters.connectionFor(database)
+      const columns = table.entityType === 'materialized-view' ?
+        await connection.listMaterializedViewColumns(table.name, table.schema) :
+        await connection.listTableColumns(table.name, table.schema)
+      const entities = context.state.databaseEntities[database]
+      if (!entities) return
+      const tables = entities.tables.map((t) => tablesMatch(t, table) ? { ...t, columns } : t)
+      context.commit('databaseEntities', { database, entities: { ...entities, tables } })
+    },
     async updateTableColumns(context, table: TableOrView) {
       log.debug('actions/updateTableColumns', table.name)
       try {
@@ -766,6 +830,34 @@ const store = new Vuex.Store<State>({
         context.commit('tables', tables)
       } finally {
         context.commit("tablesLoading", null)
+      }
+    },
+    /**
+     * Load tables, views and routines of a non-default database into
+     * `databaseEntities`. Loads once unless `force` is set (retry).
+     */
+    async loadDatabaseEntities(context, { database, force = false }: { database: string, force?: boolean }) {
+      if (database == null || database === context.state.database) return
+      const current = context.state.databaseEntities[database]
+      if (!force && (current?.status === 'loading' || current?.status === 'loaded')) return
+
+      context.commit('databaseEntities', { database, entities: { tables: [], routines: [], status: 'loading' } })
+      try {
+        const connection: ElectronUtilityConnectionClient = context.getters.connectionFor(database)
+        const onlyTables = await connection.listTables(null)
+        onlyTables.forEach((t) => t.entityType = 'table')
+        const views = await connection.listViews(null)
+        views.forEach((v) => v.entityType = 'view')
+        const materialized = await connection.listMaterializedViews(null)
+        materialized.forEach((v) => v.entityType = 'materialized-view')
+        const routines = await connection.listRoutines(null)
+        routines.forEach((r) => r.entityType = 'routine')
+        const tables = onlyTables.concat(views).concat(materialized)
+        tables.forEach((t) => t.columns ||= [])
+        context.commit('databaseEntities', { database, entities: { tables, routines: Object.freeze(routines), status: 'loaded' } })
+      } catch (e) {
+        log.error(`Loading entities of database ${database} failed`, e)
+        context.commit('databaseEntities', { database, entities: { tables: [], routines: [], status: 'error', error: e.message } })
       }
     },
     async updateRoutines(context) {

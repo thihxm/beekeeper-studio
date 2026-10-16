@@ -149,9 +149,8 @@ export abstract class BasicDatabaseClient<RawResultType extends BaseQueryResult,
   async disconnect(): Promise<void> {
     this.database.connecting = false;
 
-    if (this.server.sshTunnel) {
-      await this.server.sshTunnel.connection.shutdown();
-    }
+    // the ssh tunnel is shared by every database client of the server, so only
+    // server.end() closes it
 
     if (this.server.db[this.database.database]) {
       // delete this.server.db[this.database.database]

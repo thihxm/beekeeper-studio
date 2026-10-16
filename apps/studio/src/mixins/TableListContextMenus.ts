@@ -176,6 +176,33 @@ export default {
         },
       ] as ContextOption[]
     },
+    /** Entities of a non-default database: only actions that know which database to use */
+    otherDatabaseTableMenuOptions() {
+      return (database: string) => [
+        {
+          name: "View Data",
+          slug: 'view-data',
+          handler: ({ item }) => {
+            this.$root.$emit(AppEvent.loadTable, { table: item, database })
+          }
+        },
+        {
+          name: "View Structure",
+          slug: 'view-structure',
+          handler: ({ item }) => {
+            this.$root.$emit(AppEvent.openTableProperties, { table: item, database })
+          }
+        },
+        divider,
+        {
+          name: "Copy Name",
+          slug: 'copy-name',
+          handler: ({ item }) => {
+            this.$copyText(item.name)
+          }
+        },
+      ] as ContextOption[]
+    },
     schemaMenuOptions() {
       const dialect: DialectData = this.$store.getters.dialectData;
 

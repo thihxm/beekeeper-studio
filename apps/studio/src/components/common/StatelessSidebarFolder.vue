@@ -1,6 +1,7 @@
 <template>
   <div
     class="list-item schema-item"
+    :style="{ '--level': level || 0 }"
     @contextmenu="$emit('contextmenu', $event)"
   >
     <div
@@ -30,6 +31,6 @@
 
 <script lang="ts">
 	export default {
-    props: ["schema", "expanded"],
+    props: ["schema", "expanded", "level"],
 	}
 </script>

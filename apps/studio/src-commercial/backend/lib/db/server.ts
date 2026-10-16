@@ -65,6 +65,8 @@ export function createServer(config: IDbConnectionServerConfig): IDbConnectionPu
         dbName = 'postgres'
       }
 
+      // cache under the key callers look up with (`ns::db` for SurrealDB)
+      const key = dbName;
       let namespace: string = undefined;
       if (config.client === 'surrealdb') {
         [namespace, dbName] = dbName.split("::");
@@ -78,9 +80,9 @@ export function createServer(config: IDbConnectionServerConfig): IDbConnectionPu
       };
 
       // @ts-expect-error Function siginature incorrect
-      server.db[dbName] = createConnection(server, database, cryptoSecret);
+      server.db[key] = createConnection(server, database, cryptoSecret);
 
-      return server.db[dbName];
+      return server.db[key];
     },
 
     async versionString() {

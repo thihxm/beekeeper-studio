@@ -24,6 +24,8 @@ export enum AppEvent {
   createTableFromFile = 'new_table_from_file',
   openTableProperties = 'loadTableProperties',
   loadTable = 'loadTable',
+  /** expand (and load) a database node in the sidebar tree */
+  expandDatabase = 'expandDatabase',
   loadSelectTop = 'loadSelectTop',
   quickSearch = 'quickSearch',
   promptLogin = 'cloud_signin',

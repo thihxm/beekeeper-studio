@@ -132,6 +132,8 @@ export default Vue.extend({
   props: [
     "id",
     "table",
+    /** set when the table belongs to a non-default database */
+    "database",
     "container",
     "pinned",
     "draggable",
@@ -175,12 +177,14 @@ export default Vue.extend({
         this.activeTab &&
         this.activeTab.table &&
         this.activeTab.table.name === this.table.name &&
-        this.activeTab.table.schema === this.table.schema;
+        this.activeTab.table.schema === this.table.schema &&
+        (this.activeTab.databaseName ?? this.defaultDatabase) === (this.database ?? this.defaultDatabase);
 
       return tableSelected;
     },
     ...mapGetters(["selectedSidebarItem"]),
     ...mapState(["activeTab"]),
+    ...mapState({ defaultDatabase: "database" }),
   },
   methods: {
     selectItem() {
@@ -208,7 +212,7 @@ export default Vue.extend({
       if (this.clickState.openClicks > 0) {
         return;
       }
-      this.$root.$emit("loadTable", { table: this.table });
+      this.$root.$emit("loadTable", { table: this.table, database: this.database });
       this.clickState.openClicks++;
       this.clickState.timer = setTimeout(() => {
         this.clickState.openClicks = 0;

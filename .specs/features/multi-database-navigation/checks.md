@@ -13,59 +13,59 @@ Slices follow the build order: S1, then S4 (which sits on `connectionFor`), then
 
 ### S1 - database tree in the sidebar · 10 files · 154 KB · ~38k
 
-**C1** - `connectionFor(sId, null)` and `connectionFor(sId, <active database>)` both return `state(sId).connection`, and `server.createConnection` is called 0 times (AC 7)
+**C1** - `connectionFor(sId, null)` and `connectionFor(sId, <active database>)` both return `state(sId).connection`, and `server.createConnection` is called 0 times (AC 7) ✅
 Proof: `VU tests/vitest/unit/handlers/connectionFor.spec.ts -t "returns the active connection for null and the active database"`
 
-**C2** - Two `connectionFor(sId, "b")` calls with `"b"` not active call `server.createConnection("b")` once and `connect()` once, and both return the same client (AC 8)
+**C2** - Two `connectionFor(sId, "b")` calls with `"b"` not active call `server.createConnection("b")` once and `connect()` once, and both return the same client (AC 8) ✅
 Proof: `VU tests/vitest/unit/handlers/connectionFor.spec.ts -t "creates a non-active client once and reuses it"`
 
-**C3** - IF `connect()` rejects for database `"b"` THEN `connectionFor` rejects with that same error, and `server.db["b"]` is `undefined` afterwards (AC 4, utility half)
+**C3** - IF `connect()` rejects for database `"b"` THEN `connectionFor` rejects with that same error, and `server.db["b"]` is `undefined` afterwards (AC 4, utility half) ✅
 Proof: `VU tests/vitest/unit/handlers/connectionFor.spec.ts -t "failed connect drops the client and rethrows"`
 
-**C4** - Disconnecting one client with `BasicDatabaseClient.disconnect()` leaves `server.sshTunnel` non-null and does not call its `shutdown` (AC 9, first half)
+**C4** - Disconnecting one client with `BasicDatabaseClient.disconnect()` leaves `server.sshTunnel` non-null and does not call its `shutdown` (AC 9, first half) ✅
 Proof: `VU tests/vitest/unit/lib/db/serverClientCache.spec.ts -t "disconnecting one client keeps the ssh tunnel"`
 
-**C5** - The `conn/disconnect` handler calls `disconnect()` on every client in `server.db` (2 of 2 in the fixture) and leaves `server.sshTunnel === null` (AC 9, second half)
+**C5** - The `conn/disconnect` handler calls `disconnect()` on every client in `server.db` (2 of 2 in the fixture) and leaves `server.sshTunnel === null` (AC 9, second half) ✅
 Proof: `VU tests/vitest/unit/handlers/connectionFor.spec.ts -t "conn/disconnect ends every cached client and the tunnel"`
 
-**C6** - For a SurrealDB server, `createConnection("ns::db")` called twice returns the same client, and the cache key is `"ns::db"` (Impact, SurrealDB leak)
+**C6** - For a SurrealDB server, `createConnection("ns::db")` called twice returns the same client, and the cache key is `"ns::db"` (Impact, SurrealDB leak) ✅
 Proof: `VU tests/vitest/unit/lib/db/serverClientCache.spec.ts -t "surrealdb client is cached under ns::db"`
 
-**C7** - A client built with `connection.forDatabase("b")` sends `database: "b"` on `conn/listTables`, `conn/listViews`, `conn/listRoutines` and `conn/query`. The plain `connection` sends no `database` key on the same 4 calls (door 2)
+**C7** - A client built with `connection.forDatabase("b")` sends `database: "b"` on `conn/listTables`, `conn/listViews`, `conn/listRoutines` and `conn/query`. The plain `connection` sends no `database` key on the same 4 calls (door 2) ✅
 Proof: `VU tests/vitest/unit/lib/utility/ElectronUtilityConnectionClient.spec.ts -t "forDatabase injects database on every call"`
 Proof: `VU tests/vitest/unit/lib/utility/ElectronUtilityConnectionClient.spec.ts -t "default client sends no database"`
 
-**C8** - The `conn/listTables` handler called with `{ database: "b" }` invokes `listTables` on `server.db["b"]` and not on `state.connection` (door 2, utility half)
+**C8** - The `conn/listTables` handler called with `{ database: "b" }` invokes `listTables` on `server.db["b"]` and not on `state.connection` (door 2, utility half) ✅
 Proof: `VU tests/vitest/unit/handlers/connectionFor.spec.ts -t "conn handlers route by database"`
 
-**C9** - Dispatching `loadDatabaseEntities("b")` twice sends `conn/listTables` with `database: "b"` exactly once. Afterwards `databaseEntities.b.status === "loaded"`, and `tablesFor("b")` returns the fixture tables of `b` (AC 2, store half)
+**C9** - Dispatching `loadDatabaseEntities("b")` twice sends `conn/listTables` with `database: "b"` exactly once. Afterwards `databaseEntities.b.status === "loaded"`, and `tablesFor("b")` returns the fixture tables of `b` (AC 2, store half) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "loads a database once and caches it"`
 
-**C10** - While `conn/listTables` is pending for `b`, `databaseEntities.b.status === "loading"`. After a rejection, it is `"error"` and `error` carries the driver message (AC 3, AC 4, store half)
+**C10** - While `conn/listTables` is pending for `b`, `databaseEntities.b.status === "loading"`. After a rejection, it is `"error"` and `error` carries the driver message (AC 3, AC 4, store half) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "tracks loading and error status"`
 
-**C11** - The store's `disconnect` action leaves `databaseEntities` equal to `{}` (AC 10)
+**C11** - The store's `disconnect` action leaves `databaseEntities` equal to `{}` (AC 10) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "disconnect clears databaseEntities"`
 
-**C12** - `VirtualTableList` mounted with `databaseList = ["a","b","c"]`, default `a`, and a dialect without `multipleDatabases` disabled renders 3 database rows, with `a` expanded and showing its tables, and `b` and `c` collapsed (AC 1)
+**C12** - `VirtualTableList` mounted with `databaseList = ["a","b","c"]`, default `a`, and a dialect without `multipleDatabases` disabled renders 3 database rows, with `a` expanded and showing its tables, and `b` and `c` collapsed (AC 1) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "renders one node per database with the default expanded"`
 
-**C13** - Expanding collapsed `b` dispatches `loadDatabaseEntities` with `"b"` once, and after load its schema and table rows render under `b` (AC 2, UI half)
+**C13** - Expanding collapsed `b` dispatches `loadDatabaseEntities` with `"b"` once, and after load its schema and table rows render under `b` (AC 2, UI half) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "expanding a database loads it once"`
 
-**C14** - A `b` node with status `"loading"` renders a loading indicator. A `b` node with status `"error"` renders the error message and a retry control, and clicking retry dispatches `loadDatabaseEntities("b")` again (AC 3, AC 4, UI half)
+**C14** - A `b` node with status `"loading"` renders a loading indicator. A `b` node with status `"error"` renders the error message and a retry control, and clicking retry dispatches `loadDatabaseEntities("b")` again (AC 3, AC 4, UI half) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "shows loading and error with retry"`
 
-**C15** - With database `a` and schema `public` both expanded, collapsing `a` leaves 0 rendered rows whose ancestor is `a` (AC 5)
+**C15** - With database `a` and schema `public` both expanded, collapsing `a` leaves 0 rendered rows whose ancestor is `a` (AC 5) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "collapsing a database hides every descendant"`
 
-**C16** - With a dialect whose `disabledFeatures.multipleDatabases === true`, 0 database rows render, and schemas are top-level as today (AC 6)
+**C16** - With a dialect whose `disabledFeatures.multipleDatabases === true`, 0 database rows render, and schemas are top-level as today (AC 6) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "no database level when multipleDatabases is disabled"`
 
-**C17** - A pin with `databaseName "b"` on `public.users` renders as pinned only under `b`, not under `a`, which also has `public.users`. A hidden entity with `databaseName "b"` is hidden only under `b` (AC 11)
+**C17** - A pin with `databaseName "b"` on `public.users` renders as pinned only under `b`, not under `a`, which also has `public.users`. A hidden entity with `databaseName "b"` is hidden only under `b` (AC 11) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "pins and hidden entities apply per database"`
 
-**C18** - Against a real Postgres container with databases `a` (table `ta`) and `b` (table `tb`), `connectionFor(sId, "b").listTables()` returns `tb` and not `ta`, while `state.connection` stays on `a` (AC 2, end to end)
+**C18** - Against a real Postgres container with databases `a` (table `ta`) and `b` (table `tb`), `connectionFor(sId, "b").listTables()` returns `tb` and not `ta`, while `state.connection` stays on `a` (AC 2, end to end) ✅
 Proof: `VI tests/vitest/integration/lib/db/multiDatabase.spec.ts -t "lists tables of a non-active database"`
 
 ### S4 - bounded clients with transparent recreate · 4 files · 37 KB · ~9k
