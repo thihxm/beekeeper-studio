@@ -5,6 +5,7 @@ import Vue from "vue";
 import { AppEventMixin, AppEvent } from "@/common/AppEvent";
 import { sidebarKeyForTab } from "@/common/sidebarKey";
 import CoreTabHeader from "@/components/CoreTabHeader.vue";
+import CoreTabs from "@/components/CoreTabs.vue";
 import VirtualTableList from "@/components/sidebar/core/table_list/VirtualTableList.vue";
 
 const localVue = createLocalVue();
@@ -88,6 +89,30 @@ describe("selection key of the active tab", () => {
   it("selection key uses the entity type", () => {
     const tab = { tabType: "table", tableName: "v", schemaName: "public", entityType: "view", databaseName: null };
     expect(sidebarKeyForTab(tab, "a")).toBe("view.public.v");
+  });
+});
+
+describe("closing a tab", () => {
+  const clear = ((CoreTabs as any).options ?? CoreTabs).methods.clearSidebarSelectionFor;
+  const context = (selected: string) => ({
+    selectedSidebarItem: selected,
+    $store: { state: { database: "a" }, commit: vi.fn() },
+  });
+
+  it("clears the selection of a closed tab in another database", () => {
+    const ctx = context("b::table.public.users");
+    clear.call(ctx, { tabType: "table", tableName: "users", schemaName: "public", entityType: "table", databaseName: "b" });
+    expect(ctx.$store.commit).toHaveBeenCalledWith("selectSidebarItem", null);
+
+    // a view's structure tab: the key is the entity type, not the tab type
+    const view = context("view.public.v");
+    clear.call(view, { tabType: "table-properties", tableName: "v", schemaName: "public", entityType: "view", databaseName: "a" });
+    expect(view.$store.commit).toHaveBeenCalledWith("selectSidebarItem", null);
+
+    // another table stays selected
+    const other = context("table.public.orders");
+    clear.call(other, { tabType: "table", tableName: "users", schemaName: "public", entityType: "table", databaseName: "a" });
+    expect(other.$store.commit).not.toHaveBeenCalled();
   });
 });
 

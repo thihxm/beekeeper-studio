@@ -16,6 +16,7 @@ Proof: `VI tests/vitest/integration/lib/db/multiDatabase.spec.ts -t "lists datab
 
 **C2** - `SQLServerClient.listInaccessibleDatabases()` runs SQL that contains `HAS_DBACCESS(name) = 0` and returns the `name` of each returned row (AC 2) ✅
 Proof: `VU tests/vitest/unit/lib/db/inaccessibleDatabases.spec.ts -t "sql server lists names without db access"`
+Proof: `VI tests/vitest/integration/lib/db/sqlserverInaccessible.spec.ts -t "sql server lists databases the login has no access to"`
 
 **C3** - A client that doesn't override it (e.g. MySQL) returns `[]` from `listInaccessibleDatabases()` (AC 3) ✅
 Proof: `VU tests/vitest/unit/lib/db/inaccessibleDatabases.spec.ts -t "default is an empty list"`
@@ -159,7 +160,7 @@ Evidence:
 
 - `src/lib/db/accessDenied.ts`: maps 5 driver codes (42501, 1044, ER_DBACCESS_DENIED_ERROR, 916, 4060) to one outcome → decides. Proven at its own layer by C4, table-driven.
 - `handlerState.connectionFor` catch: 2 branches (access denied → rethrow with code, else rethrow as is) → decides, reached across IPC. Own layer C4/C5; the code reaching the renderer is C6.
-- `PostgresClient` / `SQLServerClient.listInaccessibleDatabases`: SQL against a database → decides, reached across the database boundary. Real Postgres C1; SQL Server C2 at its own layer (no container in the suite).
+- `PostgresClient` / `SQLServerClient.listInaccessibleDatabases`: SQL against a database → decides, reached across the database boundary. Real Postgres C1. SQL Server C2 has both a real container (`sqlserverInaccessible.spec.ts`) and its own layer. The first draft said the suite had no SQL Server container, which was wrong; the jest suite already starts one, and verification round 3 caught it.
 - `conn/listInaccessibleDatabases` handler and `ElectronUtilityConnectionClient.listInaccessibleDatabases`: one forwarded call → instrumentation, covered by C7.
 - store `updateDatabaseList` / `loadDatabaseEntities` lock logic: 3 branches (listed, list failed, load denied) → decides. C7, C8.
 - `VirtualTableList` database node: locked, color, reveal on/off, load on expand → decides. C9, C10, C15, C16, C22, C23.
@@ -198,4 +199,5 @@ Size from `wc -c` on the files each slice touches, divided by 4:
 - **Boundary:** C1-C32 closed at `bda383924`
 - **Settled mid-build:** verification rounds 1 and 2 found wiring with no proof: the reveal event, the color modal's open, save and mount, label loading on connect, the utility privilege route, and errno-only MySQL matching. Proof lines were added to C7, C15, C16 and C19 for the tests that now cover it. Existing proofs and claims are unchanged.
 - **Abandoned:** none
+- **Settled after round 3:** the SQL Server boundary proof was added to C2. Closing a tab now clears the sidebar selection with `sidebarKeyForTab` (`CoreTabs.clearSidebarSelectionFor`). Before, it still built the old key and left a stale selection for tabs on other databases, views and structure tabs. Covered by `revealActiveEntity.spec.ts` "clears the selection of a closed tab in another database".
 - **Profile:** raised from `light` to `standard` by the user on 2026-10-16, after verification rounds kept injecting faults beyond the light profile. `standard` bounds fault injection to one per assertion surface, at most 5.

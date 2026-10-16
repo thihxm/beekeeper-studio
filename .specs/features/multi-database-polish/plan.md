@@ -57,7 +57,7 @@ flowchart TD
 | domain | New term `inaccessibleDatabases` means the databases of the server the current account can't open, for this session. Read by `VirtualTableList`, `SearchModule` and `TabWithTable`. |
 | domain | A database node gains a fourth state, `locked`, next to idle, loading, loaded and error. A locked node doesn't expand. |
 | domain | New term `database label` means the color of one database of a saved connection. |
-| behaviour | The sidebar selection key for a tab gains the database prefix used by the tree (`<db>::`) and uses the tab's `entityType` instead of `tabType`. `TableListItem.vue:218` and `StatelessTableListItem` compare against it. A view tab is now highlighted too; before, it never matched because the key said `table.`. |
+| behaviour | The sidebar selection key for a tab gains the database prefix used by the tree (`<db>::`) and uses the tab's `entityType` instead of `tabType`. `TableListItem.vue:218`, `StatelessTableListItem` and `CoreTabs` (clearing the selection when a tab closes) use it. A view tab is now highlighted too; before, it never matched because the key said `table.`. |
 | behaviour | `UtilityConnection` copies the utility's `errorCode` onto the rejected `Error` as `code`. Before, it was dropped for every non-plugin error, so a caller that checks `err.code` could see a value where it saw `undefined`. A grep found no renderer code that branches on `err.code` from utility calls. |
 | stored data | New table `database_labels`. Nothing existing is migrated. |
 
