@@ -8,7 +8,7 @@ import { TabType, TransportOpenTab } from "@/common/transport/TransportOpenTab";
 import { isValidConnectionId } from "@/handlers/utils";
 
 
-const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'entityType', 'titleScope', 'connectionId', 'workspaceId', 'position']
+const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'entityType', 'titleScope', 'connectionId', 'workspaceId', 'position', 'databaseName']
 
 interface ConnectionIds {
   connectionId: number,
@@ -70,6 +70,10 @@ export class OpenTab extends ApplicationEntity {
 
   @Column({type: 'varchar', nullable: true})
   entityType?: string
+
+  /** The database the tab runs on; null follows the connection's default database */
+  @Column({type: 'varchar', nullable: true})
+  databaseName?: string | null
 
   @IsInt({ message: 'connectionId must be a saved connection id' })
   @Min(1, { message: 'connectionId must be a saved connection id' })
@@ -158,9 +162,14 @@ export class OpenTab extends ApplicationEntity {
   }
 
   // we want a loose match here, this is used to determine if we open a new tab or not
-  matches(other: OpenTab): boolean {
+  matches(other: OpenTab, defaultDatabase: string | null = null): boolean {
     // new tabs don't have a workspace set
     if (other.workspaceId && this.workspaceId && this.workspaceId !== other.workspaceId) {
+      return false;
+    }
+
+    if (['table', 'table-properties', 'import-table'].includes(other.tabType) &&
+      (this.databaseName ?? defaultDatabase) !== (other.databaseName ?? defaultDatabase)) {
       return false;
     }
 

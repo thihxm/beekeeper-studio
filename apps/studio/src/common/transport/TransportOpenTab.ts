@@ -9,7 +9,7 @@ export type PluginTabType = 'plugin-base' | 'plugin-shell';
 export type CoreTabType = 'query' | 'table' | 'table-properties' | 'settings' | 'table-builder' | 'backup' | 'import-export-database' | 'restore' | 'import-table' | 'shell'
 export type TabType = CoreTabType | PluginTabType
 
-const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'context']
+const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'context', 'databaseName']
 
 export interface TransportOpenTab<Context = {}> extends Transport {
   tabType: TabType,
@@ -25,6 +25,8 @@ export interface TransportOpenTab<Context = {}> extends Transport {
   tableName?: string,
   schemaName?: string,
   entityType?: string,
+  /** The database the tab runs on; null follows the connection's default database */
+  databaseName?: string | null,
   connectionId: number,
   workspaceId?: number,
   filters?: string,
@@ -175,9 +177,15 @@ export function findQuery(obj: TransportOpenTab, queries: ISavedQuery[]): ISaved
 }
 
 // we want a loose match here, this is used to determine if we open a new tab or not
-export function matches(obj: TransportOpenTab, other: TransportOpenTab): boolean {
+export function matches(obj: TransportOpenTab, other: TransportOpenTab, defaultDatabase: string | null = null): boolean {
   // new tabs don't have a workspace set
   if (other.workspaceId && obj.workspaceId && obj.workspaceId !== other.workspaceId) {
+    return false;
+  }
+
+  // a null database is the connection's default one
+  if (['table', 'table-properties', 'import-table'].includes(other.tabType) &&
+    (obj.databaseName ?? defaultDatabase) !== (other.databaseName ?? defaultDatabase)) {
     return false;
   }
 

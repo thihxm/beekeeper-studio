@@ -64,6 +64,7 @@
   import MagicColumnBuilder from '@/lib/magic/MagicColumnBuilder'
   import Papa from 'papaparse'
   import { mapState, mapGetters } from 'vuex'
+  import { TabDatabaseMixin } from '@/mixins/TabDatabase'
   import { markdownTable } from 'markdown-table'
   import intervalParse from 'postgres-interval'
   import * as td from 'tinyduration'
@@ -102,7 +103,7 @@
 
   export default {
     components: { EditorModal },
-    mixins: [Converter, Mutators, FkLinkMixin],
+    mixins: [Converter, Mutators, FkLinkMixin, TabDatabaseMixin],
     data() {
       return {
         tabulator: null,
@@ -160,7 +161,7 @@
       }
     },
     computed: {
-      ...mapState(['usedConfig', 'defaultSchema', 'connectionType', 'connection']),
+      ...mapState(['usedConfig', 'defaultSchema', 'connectionType']),
       ...mapGetters(['dialectData', 'dialect']),
       ...mapGetters('popupMenu', ['getExtraPopupMenu']),
       queryDialect() {

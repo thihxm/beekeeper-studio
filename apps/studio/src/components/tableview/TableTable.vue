@@ -352,6 +352,9 @@ export default Vue.extend({
   components: { Statusbar, ColumnFilterModal, TableLength, RowFilterBuilder, EditorModal, LoadingSpinner },
   mixins: [data_converter, DataMutators, FkLinkMixin],
   props: ["active", 'tab', 'table'],
+  provide() {
+    return { tabDatabase: () => this.tab?.databaseName ?? null }
+  },
   data() {
     return {
       addedCol: false,
@@ -408,7 +411,15 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapState(['tables', 'tablesInitialLoaded', 'usedConfig', 'database', 'workspaceId', 'connectionType', 'connection']),
+    /** The tab's database, or the connection's default one */
+    database(): string | null {
+      return this.tab?.databaseName ?? this.$store.state.database
+    },
+    /** Every call of this tab goes to its own database */
+    connection() {
+      return this.$store.getters.connectionFor(this.tab?.databaseName)
+    },
+    ...mapState(['tables', 'tablesInitialLoaded', 'usedConfig', 'workspaceId', 'connectionType']),
     ...mapGetters(['dialectData', 'dialect', 'minimalMode']),
     ...mapGetters('popupMenu', ['getExtraPopupMenu']),
     canJumpToLastPage() {

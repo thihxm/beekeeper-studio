@@ -965,26 +965,28 @@ export default Vue.extend({
       tab.unsavedChanges = true
       this.addTab(tab)
     },
-    openTableProperties({ table }) {
+    openTableProperties({ table, database }) {
       const t = {} as TransportOpenTab;
       t.tabType = 'table-properties';
       t.tableName = table.name ?? table.tableName
       t.schemaName = table.schema ?? table.schemaName
       t.title = table.name ?? table.tableName
-      const existing = this.tabItems.find((tab) => matches(tab, t))
+      t.databaseName = database ?? this.$store.state.database ?? null
+      const existing = this.tabItems.find((tab) => matches(tab, t, this.$store.state.database))
       if (existing) return this.$store.dispatch('tabs/setActive', existing)
       this.addTab(t)
     },
-    async openTable({ table, filters }) {
+    async openTable({ table, filters, database }) {
       let tab = {} as TransportOpenTab;
       tab.tabType = 'table';
       tab.title = table.name ?? table.tableName
       tab.tableName = table.name ?? table.tableName
       tab.schemaName = table.schema ?? table.schemaName
       tab.entityType = table.entityType
+      tab.databaseName = database ?? this.$store.state.database ?? null
       tab = setFilters(tab, filters)
       tab.titleScope = "all"
-      let existing = this.tabItems.find((t) => matches(t, tab))
+      let existing = this.tabItems.find((t) => matches(t, tab, this.$store.state.database))
       if (existing) {
         if (filters) {
           existing = setFilters(existing, filters)

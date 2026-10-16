@@ -5,6 +5,9 @@ import rawLog from '@bksLogger'
 import { TransportOpenTab, duplicate, matches, TabTypeConfig } from '@/common/transport/TransportOpenTab';
 import Vue from 'vue';
 
+/** Tab types that run against one database of the connection */
+export const DATABASE_BOUND_TABS = ['query', 'table', 'table-properties', 'import-table']
+
 const log = rawLog.scope('TabModule')
 
 // Everything CoreTabs does is keyed on `tab.id`: which header is selected,
@@ -74,7 +77,9 @@ export const TabModule: Module<State, RootState> = {
     fatTabs(state, _getters, rootState) {
       return state.tabs.map((tab) => {
         const query = tab.queryId ? rootState['data/queries']['items'].find((q) => q.id === tab.queryId) : null
-        const table = tab.tableName ? rootState.tables.find((t) => {
+        const tables = tab.databaseName == null || tab.databaseName === rootState.database ?
+          rootState.tables : rootState.databaseEntities[tab.databaseName]?.tables ?? []
+        const table = tab.tableName ? tables.find((t) => {
           return t.name === tab.tableName && t.schema === tab.schemaName
         }) : null
         return {
@@ -208,6 +213,11 @@ export const TabModule: Module<State, RootState> = {
 
       if (endOfPosition) {
         item.position = (context.getters.sortedTabs.reverse()[0]?.position || 0) + 1
+      }
+      // a new tab binds the default database explicitly, so changing the
+      // default later doesn't move it
+      if (item.databaseName === undefined && DATABASE_BOUND_TABS.includes(item.tabType)) {
+        item.databaseName = context.rootState.database ?? null
       }
       if (usedConfig?.id) {
         log.info("saving tab", item)

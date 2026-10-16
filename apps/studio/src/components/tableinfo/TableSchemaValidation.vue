@@ -111,7 +111,7 @@
 </template>
 
 <script>
-import { mapState } from 'vuex'
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import TextEditor from '@beekeeperstudio/ui-kit/vue/text-editor'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import StatusBar from '@/components/common/StatusBar.vue'
@@ -126,6 +126,7 @@ export default {
     ErrorAlert,
     StatusBar
   },
+  mixins: [TabDatabaseMixin],
   props: {
     table: {
       type: Object,
@@ -155,7 +156,6 @@ export default {
     }
   },
   computed: {
-    ...mapState(['connection']),
     hotkeys() {
       return this.$vHotkeyKeymap({
         'general.refresh': this.refresh,

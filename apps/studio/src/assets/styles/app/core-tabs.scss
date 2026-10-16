@@ -169,6 +169,15 @@
         font-style: italic;
         font-weight: normal!important;
       }
+      .tab-database {
+        margin-left: 0.35rem;
+        padding: 0 0.3rem;
+        border-radius: 3px;
+        background: rgba($theme-base, 0.08);
+        color: $text-light;
+        font-size: 85%;
+        font-weight: normal!important;
+      }
     }
     .item-icon {
       display: inline-block;

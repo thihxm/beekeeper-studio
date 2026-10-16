@@ -1,6 +1,6 @@
 <template>
   <div class="with-table-wrapper">
-    <div v-if="!tablesInitialLoaded">
+    <div v-if="!loaded">
       <x-progressbar />
     </div>
     <div
@@ -35,7 +35,20 @@ const log = rawLog.scope('TabWithTable')
 export default Vue.extend({
   props: ['tab'],
   computed: {
-    ...mapState(['tables', 'tablesInitialLoaded']),
+    ...mapState(['tablesInitialLoaded', 'database', 'databaseEntities']),
+    /** a tab bound to another database than the default one */
+    otherDatabase(): string | null {
+      const database = this.tab?.databaseName
+      return database != null && database !== this.database ? database : null
+    },
+    loaded(): boolean {
+      if (!this.otherDatabase) return this.tablesInitialLoaded
+      const status = this.databaseEntities[this.otherDatabase]?.status
+      return status === 'loaded' || status === 'error'
+    },
+    tables() {
+      return this.$store.getters.tablesFor(this.tab?.databaseName)
+    },
     table() {
       return findTable(this.tab, this.tables)
     },
@@ -43,7 +56,13 @@ export default Vue.extend({
   watch: {
     table() {
       log.debug("table changed!", this.table)
-    }
+    },
+    otherDatabase: {
+      immediate: true,
+      handler(database: string | null) {
+        if (database) this.$store.dispatch('loadDatabaseEntities', { database })
+      }
+    },
   }
 })
 </script>

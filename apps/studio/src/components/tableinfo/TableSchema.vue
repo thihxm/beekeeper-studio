@@ -123,6 +123,7 @@ import CheckboxFormatterVue from '@shared/components/tabulator/CheckboxFormatter
 import CheckboxEditorVue from '@shared/components/tabulator/CheckboxEditor.vue'
 import NullableInputEditorVue from '@shared/components/tabulator/NullableInputEditor.vue'
 import { mapGetters, mapState } from 'vuex'
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { getDialectData } from '@shared/lib/dialects'
 import { AppEvent } from '@/common/AppEvent'
 import StatusBar from '../common/StatusBar.vue'
@@ -152,7 +153,7 @@ export default Vue.extend({
     ErrorAlert,
     TableInfoToolbar
   },
-  mixins: [DataMutators, StructureCopyMixin, StructureFilterMixin],
+  mixins: [DataMutators, StructureCopyMixin, StructureFilterMixin, TabDatabaseMixin],
   props: ["table", "tabID", "active", "primaryKeys", "tabState"],
   data() {
     return {
@@ -179,7 +180,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapGetters(['dialect', 'dialectData']),
-    ...mapState(['database', 'connection', 'usedConfig']),
+    ...mapState(['usedConfig']),
     hotkeys() {
       if (!this.active) return {}
       return this.$vHotkeyKeymap({

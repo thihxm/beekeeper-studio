@@ -192,7 +192,8 @@
 import Vue from "vue";
 import { TableFilter } from "@/lib/db/models";
 import { joinFilters, normalizeFilters, createTableFilter, checkEmptyFilters } from "@/common/utils";
-import { mapGetters, mapState } from "vuex";
+import { mapGetters } from "vuex";
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { AppEvent } from "@/common/AppEvent";
 import _ from 'lodash';
 import BuilderFilter from "./filter/BuilderFilter.vue";
@@ -203,6 +204,7 @@ const isEmpty = (s) => _.isEmpty(_.trim(s))
 
 export default Vue.extend({
   components: { BuilderFilter },
+  mixins: [TabDatabaseMixin],
   props: ["columns", "reactiveFilters"],
   data() {
     return {
@@ -217,7 +219,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapGetters(["dialectData", "minimalMode"]),
-    ...mapState(['connection']),
+    
     additionalFilters() {
       const [_, ...additional] = this.filters;
       return additional;

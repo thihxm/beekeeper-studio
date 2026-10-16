@@ -94,6 +94,7 @@ import { AppEvent } from '@/common/AppEvent';
 import { FormatterDialect } from '@shared/lib/dialects/models';
 import { format } from 'sql-formatter';
 import { mapState } from 'vuex';
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { StructureCopyMixin } from '@/mixins/structureCopy';
 import { StructureFilterMixin } from '@/mixins/structureFilter';
 
@@ -103,7 +104,7 @@ export default Vue.extend({
     ErrorAlert,
     TableInfoToolbar
   },
-  mixins: [DataMutators, StructureCopyMixin, StructureFilterMixin],
+  mixins: [DataMutators, StructureCopyMixin, StructureFilterMixin, TabDatabaseMixin],
   props: ['table', 'tabID', 'active', 'tabState', 'properties'],
   data() {
     return {
@@ -123,7 +124,7 @@ export default Vue.extend({
     ...TabulatorStateWatchers
   },
   computed: {
-    ...mapState(['supportedFeatures', 'connection']),
+    ...mapState(['supportedFeatures']),
     hotkeys() {
       if (!this.active) return {};
       return this.$vHotkeyKeymap({

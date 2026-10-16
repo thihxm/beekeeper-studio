@@ -170,6 +170,9 @@ import rawLog from '@bksLogger'
 const log = rawLog.scope('TabTableProperties')
 export default {
   props: ["tabId", "active", "tab", "table"],
+  provide() {
+    return { tabDatabase: () => this.tab?.databaseName ?? null }
+  },
   components: { Statusbar, TableLength },
   data() {
     return {
@@ -255,7 +258,15 @@ export default {
     }
   },
   computed: {
-    ...mapState(['tables', 'tablesInitialLoaded', 'supportedFeatures', 'connection']),
+    /** The tab's database, or the connection's default one */
+    database() {
+      return this.tab?.databaseName ?? this.$store.state.database
+    },
+    /** Every call of this tab goes to its own database */
+    connection() {
+      return this.$store.getters.connectionFor(this.tab?.databaseName)
+    },
+    ...mapState(['tables', 'tablesInitialLoaded', 'supportedFeatures']),
     ...mapGetters(['dialectData', 'dialect', 'erDiagramAvailable']),
     ...mapGetters('popupMenu', ['getExtraPopupMenu']),
     shouldInitialize() {

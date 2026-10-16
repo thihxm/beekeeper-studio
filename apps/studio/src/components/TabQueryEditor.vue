@@ -98,6 +98,13 @@
         ref="toolbar"
       >
         <div class="actions secondary-actions">
+          <query-database-selector
+            v-if="showDatabaseSelector"
+            :database="database"
+            :databases="$store.state.databaseList"
+            :disabled="hasActiveTransaction || isManualCommit"
+            @change="changeTabDatabase"
+          />
           <div v-if="canManageTransactions">
             <transition name="fade-swap">
               <x-buttons
@@ -572,6 +579,7 @@
   import { divider, type Entity } from "@beekeeperstudio/ui-kit";
 
   import QueryEditorStatusBar from './editor/QueryEditorStatusBar.vue'
+  import QueryDatabaseSelector from './editor/QueryDatabaseSelector.vue'
   import QueryEditHistory from '@/components/editor/QueryEditHistory.vue'
   import rawlog from '@bksLogger'
   import ErrorAlert from './common/ErrorAlert.vue'
@@ -599,10 +607,13 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
 
   export default {
     // this.queryText holds the current editor value, always
-    components: { ResultTable, ProgressBar, ShortcutHints, QueryEditorStatusBar, ErrorAlert, MergeManager, SqlTextEditor, SurrealTextEditor, BksSuperFormatter, QueryEditHistory, InAppFolderPicker },
+    components: { QueryDatabaseSelector, ResultTable, ProgressBar, ShortcutHints, QueryEditorStatusBar, ErrorAlert, MergeManager, SqlTextEditor, SurrealTextEditor, BksSuperFormatter, QueryEditHistory, InAppFolderPicker },
     props: {
       tab: Object as PropType<TransportOpenTab>,
       active: Boolean
+    },
+    provide() {
+      return { tabDatabase: () => this.tab?.databaseName ?? null }
     },
     data() {
       return {
@@ -688,7 +699,22 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       ...mapGetters({
         'userKeymap': 'settings/userKeymap',
       }),
-      ...mapState(['usedConfig', 'connectionType', 'database', 'tables', 'storeInitialized', 'connection']),
+      /** The tab's database, or the connection's default one */
+      database(): string | null {
+        return this.tab?.databaseName ?? this.$store.state.database
+      },
+      /** Every call of this tab goes to its own database */
+      connection() {
+        return this.$store.getters.connectionFor(this.tab?.databaseName)
+      },
+      showDatabaseSelector(): boolean {
+        return !this.dialectData?.disabledFeatures?.multipleDatabases && this.$store.state.databaseList.length > 0
+      },
+      /** Entities of the tab's database, for autocomplete */
+      tables() {
+        return this.$store.getters.tablesFor(this.tab?.databaseName)
+      },
+      ...mapState(['usedConfig', 'connectionType', 'storeInitialized']),
       ...mapState('data/queries', {'savedQueries': 'items'}),
       ...mapState('data/queryFolders', { queryFolders: 'items' }),
       ...mapState('settings', ['settings']),
@@ -1126,7 +1152,16 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       hasActiveTransaction() {
         this.tab.isTransaction = this.hasActiveTransaction;
         this.updateTab();
-      }
+      },
+      // autocomplete needs the entities of the tab's database
+      'tab.databaseName': {
+        immediate: true,
+        handler(database: string | null) {
+          if (database != null && database !== this.$store.state.database) {
+            this.$store.dispatch('loadDatabaseEntities', { database })
+          }
+        }
+      },
     },
     methods: {
       ...mapActions({
@@ -1151,6 +1186,13 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       },
       updateTab() {
         this.$emit('update-tab', this.tab)
+      },
+      /** Point this tab at another database of the connection */
+      changeTabDatabase(database: string) {
+        if (this.hasActiveTransaction || this.isManualCommit) return
+        this.tab.databaseName = database
+        this.updateTab()
+        this.$store.dispatch('tabs/save', this.tab)
       },
       formatterPreset() {
         this.handleFormatterPresetModal({ showFormatter: true })

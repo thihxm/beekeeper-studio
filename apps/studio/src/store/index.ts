@@ -22,6 +22,7 @@ import { TabModule } from './modules/TabModule'
 import { HideEntityModule } from './modules/HideEntityModule'
 import { PinConnectionModule } from './modules/PinConnectionModule'
 import { ElectronUtilityConnectionClient } from '@/lib/utility/ElectronUtilityConnectionClient'
+import { connectionForTab } from '@/lib/utility/tabConnection'
 
 import { SmartLocalStorage } from '@/common/LocalStorage'
 
@@ -213,10 +214,8 @@ const store = new Vuex.Store<State>({
     },
     /** The client for `database`; the default connection for null or the default database */
     connectionFor(state, getters) {
-      return (database?: string | null): ElectronUtilityConnectionClient => {
-        if (database == null || database === state.database) return state.connection
-        return state.connection.forDatabase(getters.databaseKey(database))
-      }
+      return (database?: string | null): ElectronUtilityConnectionClient =>
+        connectionForTab(state.connection, { databaseName: database }, state.database, getters.databaseKey)
     },
     /** Entities of `database`; the default database's for null */
     tablesFor(state) {

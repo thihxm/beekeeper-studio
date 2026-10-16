@@ -13,10 +13,11 @@
 </template>
 <script lang="ts">
 import Vue from 'vue'
-import { mapState } from 'vuex'
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { joinFilters } from "@/common/utils"
 
 export default Vue.extend({
+  mixins: [TabDatabaseMixin],
   props: ['table', 'filters'],
   data: () => ({
     totalRecords: null,
@@ -24,7 +25,6 @@ export default Vue.extend({
     error: null
   }),
   computed: {
-    ...mapState(['connection']),
     hoverTitle() {
       if (this.error) return this.error.message
 

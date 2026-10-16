@@ -118,6 +118,7 @@ import ErrorAlert from '../common/ErrorAlert.vue'
 import TableInfoToolbar from './TableInfoToolbar.vue'
 import { TableIndex } from '@/lib/db/models'
 import { mapGetters, mapState } from 'vuex'
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 const log = rawLog.scope('TableIndexVue')
 import { escapeHtml } from '@shared/lib/tabulator'
 import { parseIndexColumn as mysqlParseIndexColumn } from '@/common/utils'
@@ -141,7 +142,7 @@ export default Vue.extend({
     ErrorAlert,
     TableInfoToolbar,
   },
-  mixins: [data_mutators, SelectableCellMixin, StructureCopyMixin, StructureFilterMixin],
+  mixins: [data_mutators, SelectableCellMixin, StructureCopyMixin, StructureFilterMixin, TabDatabaseMixin],
   props: ["table", "tabId", "active", "properties", 'tabState'],
   data(): State {
     return {
@@ -160,7 +161,7 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapState(['connectionType', 'connection', 'usedConfig']),
+    ...mapState(['connectionType', 'usedConfig']),
     ...mapGetters(['dialect', 'dialectData']),
     hasSql() {
       // FIXME (@day): no per db testing

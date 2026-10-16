@@ -99,6 +99,7 @@ import StatusBar from '../common/StatusBar.vue'
 import { TabulatorStateWatchers, trashButton, vueEditor } from '@shared/lib/tabulator/helpers'
 import NullableInputEditorVue from '@shared/components/tabulator/NullableInputEditor.vue'
 import { mapGetters, mapState } from 'vuex'
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { CreateRelationSpec, Dialect, DialectTitles, FormatterDialect, RelationAlterations, TableKey } from '@shared/lib/dialects/models'
 import { TableColumn, TableOrView } from '@/lib/db/models'
 import _ from 'lodash'
@@ -115,7 +116,7 @@ import { StructureFilterMixin } from '@/mixins/structureFilter';
 import { copyCellMenu } from '@/lib/menu/tableMenu';
 
 export default Vue.extend({
-  mixins: [SelectableCellMixin, StructureCopyMixin, StructureFilterMixin],
+  mixins: [SelectableCellMixin, StructureCopyMixin, StructureFilterMixin, TabDatabaseMixin],
   props: ["table", "tabId", "active", "properties", 'tabState'],
   components: {
     StatusBar,
@@ -132,7 +133,7 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapState(['tables', 'connection', 'usedConfig']),
+    ...mapState(['tables', 'usedConfig']),
     ...mapGetters(['schemas', 'dialect', 'schemaTables', 'dialectData']),
     enabled() {
       return !this.usedConfig.readOnlyMode &&

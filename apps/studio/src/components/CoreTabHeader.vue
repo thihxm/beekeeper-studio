@@ -22,7 +22,11 @@
         >{{ title }} <span
           v-if="scope && !$store.getters.minimalMode"
           class="tab-title-scope"
-        >{{ scope }}</span></span>
+        >{{ scope }}</span><span
+          v-if="tabDatabase"
+          class="tab-database"
+          :title="`Runs on database ${tabDatabase}`"
+        >{{ tabDatabase }}</span></span>
         <div class="tab-action">
           <span
             class="tab-close"
@@ -187,6 +191,14 @@ import _ from 'lodash'
         }
         const result = this.tab.text.replace(/\s+/, '')
         return result.length === 0 ? null : result
+      },
+      /** The database shown in the header: always for query tabs, and for other tabs bound to a non-default one */
+      tabDatabase() {
+        if (this.$store.getters.dialectData?.disabledFeatures?.multipleDatabases) return null
+        const defaultDatabase = this.$store.state.database
+        if (this.tab.tabType === 'query') return this.tab.databaseName ?? defaultDatabase ?? null
+        if (this.tab.databaseName != null && this.tab.databaseName !== defaultDatabase) return this.tab.databaseName
+        return null
       },
       scope() {
         if (this.tab.titleScope) {

@@ -96,35 +96,35 @@ Proof: `grep -nE "^maxOpenDatabases = 5" default.config.ini && grep -nE "^idleDa
 
 ### S2 - tabs bound to their database · 14 files · 272 KB · ~68k
 
-**C27** - Migration `20261015_add_tab_database_name` is registered in `realMigrations` and runs `ALTER TABLE tabs ADD COLUMN "databaseName" varchar NULL`. `OpenTab` and `TransportOpenTab` list `databaseName` in `pickable` (door 1)
+**C27** - Migration `20261015_add_tab_database_name` is registered in `realMigrations` and runs `ALTER TABLE tabs ADD COLUMN "databaseName" varchar NULL`. `OpenTab` and `TransportOpenTab` list `databaseName` in `pickable` (door 1) ✅
 Proof: `grep -n "ALTER TABLE tabs ADD COLUMN \"databaseName\" varchar NULL" src/migration/20261015_add_tab_database_name.js && grep -n "add_tab_database_name" src/migration/index.js && grep -n "databaseName" src/common/appdb/models/OpenTab.ts src/common/transport/TransportOpenTab.ts`
 
-**C28** - Opening `public.orders` from database `b`, data or structure, produces a tab item with `databaseName: "b"`, and `tabs/add` sends that field to `appdb/tabs/save` (AC 12, persistence half)
+**C28** - Opening `public.orders` from database `b`, data or structure, produces a tab item with `databaseName: "b"`, and `tabs/add` sends that field to `appdb/tabs/save` (AC 12, persistence half) ✅
 Proof: `VU tests/vitest/unit/store/tabDatabase.spec.ts -t "table tab from another database persists databaseName"`
 
-**C29** - `connectionForTab(connection, { databaseName: "b" })` returns a client that sends `database: "b"`. With `databaseName: null` it returns the default `connection` (AC 12 execution half, AC 15)
+**C29** - `connectionForTab(connection, { databaseName: "b" })` returns a client that sends `database: "b"`. With `databaseName: null` it returns the default `connection` (AC 12 execution half, AC 15) ✅
 Proof: `VU tests/vitest/unit/store/tabDatabase.spec.ts -t "tab connection follows databaseName"`
 
-**C30** - A new query tab created while the default database is `a` persists `databaseName: "a"` (AC 13)
+**C30** - A new query tab created while the default database is `a` persists `databaseName: "a"` (AC 13) ✅
 Proof: `VU tests/vitest/unit/store/tabDatabase.spec.ts -t "new query tab binds the default database"`
 
-**C31** - After `changeDatabase("c")`, a tab with `databaseName "b"` still resolves its table through `tablesFor("b")`, and its connection still sends `database: "b"` (AC 14)
+**C31** - After `changeDatabase("c")`, a tab with `databaseName "b"` still resolves its table through `tablesFor("b")`, and its connection still sends `database: "b"` (AC 14) ✅
 Proof: `VU tests/vitest/unit/store/tabDatabase.spec.ts -t "bound tabs survive a default database change"`
 
-**C32** - `TransportOpenTab.matches` returns `false` for two `table` tabs on `public.users` with `databaseName` `"a"` and `"b"`, and `true` for `null` vs. the current default when the default is `"a"` (AC 16, AC 15)
+**C32** - `TransportOpenTab.matches` returns `false` for two `table` tabs on `public.users` with `databaseName` `"a"` and `"b"`, and `true` for `null` vs. the current default when the default is `"a"` (AC 16, AC 15) ✅
 Proof: `VU tests/vitest/unit/transport/TransportOpenTab.spec.ts -t "matches compares databaseName"`
 
-**C33** - The query tab database selector writes the chosen database to the tab's `databaseName` and the next execution sends it. While `hasActiveTransaction` or a reserved connection is set, the selector is `disabled` (AC 17, AC 18)
+**C33** - The query tab database selector writes the chosen database to the tab's `databaseName` and the next execution sends it. While `hasActiveTransaction` or a reserved connection is set, the selector is `disabled` (AC 17, AC 18) ✅
 Proof: `VU tests/vitest/unit/components/QueryDatabaseSelector.spec.ts -t "changes the tab database"`
 Proof: `VU tests/vitest/unit/components/QueryDatabaseSelector.spec.ts -t "disabled during a transaction or reserved connection"`
 
-**C34** - With a transaction started on client `b` for tab 7, the timeout calls `rollbackTransaction(7)` on client `b` and not on `state.connection` (AC 19)
+**C34** - With a transaction started on client `b` for tab 7, the timeout calls `rollbackTransaction(7)` on client `b` and not on `state.connection` (AC 19) ✅
 Proof: `VU tests/vitest/unit/handlers/connectionFor.spec.ts -t "transaction timeout rolls back on the starting client"`
 
-**C35** - `TabWithTable` with a tab bound to `b` whose table is not in `tablesFor("b")` renders "does not exist in the selected database" (AC 20)
+**C35** - `TabWithTable` with a tab bound to `b` whose table is not in `tablesFor("b")` renders "does not exist in the selected database" (AC 20) ✅
 Proof: `VU tests/vitest/unit/components/TabWithTable.spec.ts -t "missing table in its database shows the not-found state"`
 
-**C38** - A query tab with `databaseName "b"` shows `b` in its tab header and in the database selector. With `databaseName` equal to the default `a`, both still show `a` (AC 32)
+**C38** - A query tab with `databaseName "b"` shows `b` in its tab header and in the database selector. With `databaseName` equal to the default `a`, both still show `a` (AC 32) ✅
 Proof: `VU tests/vitest/unit/components/QueryDatabaseSelector.spec.ts -t "shows the tab database"`
 Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "query tab header shows its database"`
 
