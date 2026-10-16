@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 3,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "gate_fail::when a check says a filter applies per database or per scope give the fixture the same entity in two scopes and assert the other scope is unaffected and pick names that cannot appear as substrings of other fields",
+      "text": "When a check says a filter applies per database (or per scope), give the fixture the same entity in two scopes and assert the other scope is unaffected, and pick names that cannot appear as substrings of other fields.",
+      "signal": "gate_fail",
+      "scope": "apps/studio/tests/vitest",
+      "status": "candidate",
+      "features": [
+        "multi-database-navigation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C17/C36 verification round 1 (apps/studio/tests/vitest)"
+      ],
+      "created": "2026-10-16T00:50:20Z",
+      "last_seen": "2026-10-16T00:50:20Z"
+    },
+    {
+      "id": "L-002",
+      "key": "gate_fail::put a component s display and lock decisions inside the child that renders them and pass raw parent state as props so a mount test exercises the decision instead of a value hard coded in the test",
+      "text": "Put a component's display and lock decisions inside the child that renders them and pass raw parent state as props, so a mount test exercises the decision instead of a value hard-coded in the test.",
+      "signal": "gate_fail",
+      "scope": "apps/studio/src/components",
+      "status": "candidate",
+      "features": [
+        "multi-database-navigation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C33/C38 verification round 1 (apps/studio/src/components)"
+      ],
+      "created": "2026-10-16T00:50:21Z",
+      "last_seen": "2026-10-16T00:50:21Z"
+    }
+  ]
+}
