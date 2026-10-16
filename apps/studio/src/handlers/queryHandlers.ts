@@ -1,5 +1,5 @@
 import { NgQueryResult, QueryResult } from "@/lib/db/models";
-import { checkConnection, errorMessages, state } from "./handlerState";
+import { checkConnection, errorMessages, state, touchClient } from "./handlerState";
 import BksConfig from '@/common/bksConfig';
 import _ from 'lodash';
 
@@ -17,7 +17,15 @@ export const QueryHandlers: IQueryHandlers = {
       throw new Error(errorMessages.noQuery);
     }
 
-    const result = await query.execute();
+    let result: NgQueryResult[];
+    try {
+      result = await query.execute();
+    } finally {
+      // the client is no longer busy with this query, and its idle time starts now
+      const client = state(sId).queryClients.get(queryId);
+      state(sId).queryClients.delete(queryId);
+      if (client) touchClient(sId, client);
+    }
     state(sId).queries.delete(queryId);
 
     return result.map((r: NgQueryResult) => {
@@ -39,5 +47,6 @@ export const QueryHandlers: IQueryHandlers = {
 
     await query.cancel();
     state(sId).queries.delete(queryId);
+    state(sId).queryClients.delete(queryId);
   }
 }

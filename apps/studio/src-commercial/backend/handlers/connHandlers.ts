@@ -386,6 +386,7 @@ export const ConnHandlers: IConnectionHandlers = {
     const query = await connection.query(queryText, tabId, options);
     const id = uuidv4();
     state(sId).queries.set(id, query);
+    state(sId).queryClients.set(id, connection);
     createOrResetTransactionTimeout(sId, tabId, connection, !hasActiveTransaction);
     return id;
   },

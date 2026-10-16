@@ -37,6 +37,8 @@ class State {
   pendingClients: Map<string, Promise<BasicDatabaseClient<any, any>>> = new Map();
   /** last use of each non-active database client, keyed like server.db */
   clientLastUsed: Map<string, number> = new Map();
+  /** the client each pending query (by query id) runs on */
+  queryClients: Map<string, BasicDatabaseClient<any, any>> = new Map();
   clientSweep: NodeJS.Timeout = null;
   username: string = null;
   queries: Map<string, CancelableQuery> = new Map();
@@ -168,10 +170,20 @@ function dbConfig(sId: string) {
   return bksConfig.db[connectionType] ?? bksConfig.db.default;
 }
 
-/** A client in use: a reserved connection or an open transaction runs on it */
+/** A client in use: a reserved connection, an open transaction or a query runs on it */
 function clientBusy(sId: string, client: BasicDatabaseClient<any, any>): boolean {
   if (client.reservedConnections?.size > 0) return true;
+  if ([...state(sId).queryClients.values()].includes(client)) return true;
   return [...state(sId).transactionClients.values()].includes(client);
+}
+
+/** Restart the idle clock of a non-active client, eg when a long query ends */
+export function touchClient(sId: string, client: BasicDatabaseClient<any, any>) {
+  const s = state(sId);
+  if (!s?.server) return;
+  for (const database of s.clientLastUsed.keys()) {
+    if (s.server.db(database) === client) s.clientLastUsed.set(database, Date.now());
+  }
 }
 
 /** Close a non-active database client; the next connectionFor recreates it */
@@ -198,7 +210,8 @@ function makeRoomForClient(sId: string) {
     const client = s.server.db(database);
     return client && client !== s.connection && database !== s.database;
   });
-  if (open.length < max) return;
+  // clients still connecting count too, so parallel opens can't pass the limit
+  if (open.length + s.pendingClients.size < max) return;
 
   const [leastRecent] = evictableClients(sId)
     .sort((x, y) => s.clientLastUsed.get(x) - s.clientLastUsed.get(y));

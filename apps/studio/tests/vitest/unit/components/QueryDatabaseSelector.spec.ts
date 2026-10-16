@@ -1,12 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { mount } from "@vue/test-utils";
+import { createLocalVue, mount } from "@vue/test-utils";
 import Vue from "vue";
+import Vuex from "vuex";
 import QueryDatabaseSelector from "@/components/editor/QueryDatabaseSelector.vue";
 import TabQueryEditor from "@/components/TabQueryEditor.vue";
 import { ElectronUtilityConnectionClient } from "@/lib/utility/ElectronUtilityConnectionClient";
 import { connectionForTab } from "@/lib/utility/tabConnection";
 
+const localVue = createLocalVue();
+localVue.use(Vuex);
+
 const editorOptions = (TabQueryEditor as any).options ?? TabQueryEditor;
+
+function store() {
+  return new Vuex.Store({ state: { database: "a", databaseList: ["a", "b", "c"] } });
+}
+
+/** the selector as the query editor renders it: the tab and the editor's transaction state */
+function mountSelector(tab: any, editorState: { hasActiveTransaction?: boolean; isManualCommit?: boolean } = {}) {
+  return mount(QueryDatabaseSelector, { localVue, store: store(), propsData: { tab, ...editorState } });
+}
+
+const selected = (wrapper) => (wrapper.find("select").element as HTMLSelectElement).value;
 
 describe("QueryDatabaseSelector", () => {
   let send: ReturnType<typeof vi.fn>;
@@ -17,56 +32,55 @@ describe("QueryDatabaseSelector", () => {
   });
 
   it("shows the tab database", () => {
-    const bound = mount(QueryDatabaseSelector, { propsData: { database: "b", databases: ["a", "b", "c"] } });
-    expect((bound.find("select").element as HTMLSelectElement).value).toBe("b");
-    expect(bound.find("option:checked").text()).toBe("b");
-
-    const onDefault = mount(QueryDatabaseSelector, { propsData: { database: "a", databases: ["a", "b", "c"] } });
-    expect((onDefault.find("select").element as HTMLSelectElement).value).toBe("a");
+    expect(selected(mountSelector({ tabType: "query", databaseName: "b" }))).toBe("b");
+    expect(selected(mountSelector({ tabType: "query", databaseName: "a" }))).toBe("a");
+    // a tab from before the column existed runs on the default database, and says so
+    expect(selected(mountSelector({ tabType: "query", databaseName: null }))).toBe("a");
   });
 
   it("changes the tab database", async () => {
-    const wrapper = mount(QueryDatabaseSelector, { propsData: { database: "a", databases: ["a", "b"] } });
+    const tab = { id: 1, tabType: "query", databaseName: "a" };
+    const wrapper = mountSelector(tab);
     const select = wrapper.find("select");
     (select.element as HTMLSelectElement).value = "b";
     await select.trigger("change");
+
+    expect(tab.databaseName).toBe("b");
     expect(wrapper.emitted("change")[0]).toEqual(["b"]);
 
-    // what the query editor does with that event, and where the next run goes
-    const tab = { id: 1, tabType: "query", databaseName: "a" };
-    const ctx = {
-      tab,
-      hasActiveTransaction: false,
-      isManualCommit: false,
-      updateTab: vi.fn(),
-      $store: { dispatch: vi.fn() },
-    };
-    editorOptions.methods.changeTabDatabase.call(ctx, "b");
-    expect(tab.databaseName).toBe("b");
+    // the editor persists the change, and its next run goes to b
+    const ctx = { tab, updateTab: vi.fn(), $store: { dispatch: vi.fn() } };
+    editorOptions.methods.saveTabDatabase.call(ctx);
     expect(ctx.$store.dispatch).toHaveBeenCalledWith("tabs/save", tab);
 
-    const store = {
+    const connectionStore = {
       getters: {
         connectionFor: (db: string) => connectionForTab(new ElectronUtilityConnectionClient(), { databaseName: db }, "a"),
       },
     };
-    const connection = editorOptions.computed.connection.call({ tab, $store: store });
+    const connection = editorOptions.computed.connection.call({ tab, $store: connectionStore });
     await connection.query("select 1", tab.id);
     expect(send.mock.calls[0][0]).toBe("conn/query");
     expect(send.mock.calls[0][1]).toMatchObject({ database: "b" });
   });
 
-  it("disabled during a transaction or reserved connection", () => {
-    const wrapper = mount(QueryDatabaseSelector, {
-      propsData: { database: "a", databases: ["a", "b"], disabled: true },
-    });
-    expect(wrapper.find("select").attributes("disabled")).toBe("disabled");
+  it("disabled during a transaction or reserved connection", async () => {
+    for (const editorState of [
+      { hasActiveTransaction: true, isManualCommit: false },
+      { hasActiveTransaction: false, isManualCommit: true },
+    ]) {
+      const tab = { tabType: "query", databaseName: "a" };
+      const wrapper = mountSelector(tab, editorState);
+      const select = wrapper.find("select");
+      expect(select.attributes("disabled")).toBe("disabled");
 
-    // the editor passes hasActiveTransaction || isManualCommit and ignores changes meanwhile
-    for (const state of [{ hasActiveTransaction: true, isManualCommit: false }, { hasActiveTransaction: false, isManualCommit: true }]) {
-      const tab = { databaseName: "a" };
-      editorOptions.methods.changeTabDatabase.call({ tab, ...state, updateTab: vi.fn(), $store: { dispatch: vi.fn() } }, "b");
+      (select.element as HTMLSelectElement).value = "b";
+      await select.trigger("change");
       expect(tab.databaseName).toBe("a");
+      expect(wrapper.emitted("change")).toBeUndefined();
     }
+
+    const idle = mountSelector({ tabType: "query", databaseName: "a" });
+    expect(idle.find("select").attributes("disabled")).toBeUndefined();
   });
 });

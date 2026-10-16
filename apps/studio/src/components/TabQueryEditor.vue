@@ -100,10 +100,10 @@
         <div class="actions secondary-actions">
           <query-database-selector
             v-if="showDatabaseSelector"
-            :database="database"
-            :databases="$store.state.databaseList"
-            :disabled="hasActiveTransaction || isManualCommit"
-            @change="changeTabDatabase"
+            :tab="tab"
+            :has-active-transaction="hasActiveTransaction"
+            :is-manual-commit="isManualCommit"
+            @change="saveTabDatabase"
           />
           <div v-if="canManageTransactions">
             <transition name="fade-swap">
@@ -1187,10 +1187,8 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       updateTab() {
         this.$emit('update-tab', this.tab)
       },
-      /** Point this tab at another database of the connection */
-      changeTabDatabase(database: string) {
-        if (this.hasActiveTransaction || this.isManualCommit) return
-        this.tab.databaseName = database
+      /** The selector already pointed the tab at another database; persist it */
+      saveTabDatabase() {
         this.updateTab()
         this.$store.dispatch('tabs/save', this.tab)
       },

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 vi.mock("@commercial/backend/lib/connection-provider", () => ({ default: {} }))
 
 import { ConnHandlers } from "@commercial/backend/handlers/connHandlers"
+import { QueryHandlers } from "@/handlers/queryHandlers"
 import { CLIENT_SWEEP_INTERVAL, connectionFor, newState, removeState, state } from "@/handlers/handlerState"
 import bksConfig from "@/common/bksConfig"
 
@@ -17,6 +18,7 @@ function fakeClient(name: string) {
     disconnect: vi.fn(async () => undefined),
     listTables: vi.fn(async () => [{ name: `${name}_table` }]),
     startTransaction: vi.fn(async () => undefined),
+    query: vi.fn(),
   }
 }
 
@@ -168,5 +170,31 @@ describe("non-default database client lifecycle", () => {
     expect(server.destroyConnection).toHaveBeenCalledWith("c")
     expect(server.sshTunnel).toBe(tunnel)
     expect(tunnel.connection.shutdown).not.toHaveBeenCalled()
+  })
+
+  it("parallel opens of different databases respect the limit", async () => {
+    // b is idle, then c and d start connecting at the same time
+    await connectionFor(SID, "b")
+    await Promise.all([connectionFor(SID, "c"), connectionFor(SID, "d")])
+
+    const open = Object.keys(server.cache).filter((k) => k !== "a")
+    expect(open.length).toBeLessThanOrEqual(2)
+  })
+
+  it("a client running a query is not evicted", async () => {
+    let finish: (rows: any[]) => void
+    const b = await connectionFor(SID, "b") as any
+    b.query.mockResolvedValue({ execute: () => new Promise((res) => { finish = res }), cancel: vi.fn() })
+    const queryId = await ConnHandlers["conn/query"]({ queryText: "select pg_sleep(600)", tabId: 4, hasActiveTransaction: false, sId: SID, database: "b" })
+    const running = QueryHandlers["query/execute"]({ queryId, sId: SID })
+
+    state(SID).clientLastUsed.set("b", 0)
+    vi.advanceTimersByTime(CLIENT_SWEEP_INTERVAL)
+    expect(b.disconnect).not.toHaveBeenCalled()
+
+    finish([])
+    await running
+    // idle time restarts when the query ends
+    expect(Date.now() - state(SID).clientLastUsed.get("b")).toBeLessThan(1000)
   })
 })

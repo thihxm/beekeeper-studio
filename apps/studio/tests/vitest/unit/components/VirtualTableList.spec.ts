@@ -15,6 +15,7 @@ const ordersA = { name: "orders", schema: "public", entityType: "table", columns
 const logA = { name: "log", schema: "audit", entityType: "table", columns: [] };
 const usersB = { name: "users", schema: "public", entityType: "table", columns: [] };
 const eventsB = { name: "events", schema: "public", entityType: "table", columns: [] };
+const salesB = { name: "sales", schema: "reporting", entityType: "table", columns: [] };
 
 interface Options {
   multipleDatabasesDisabled?: boolean;
@@ -105,11 +106,16 @@ describe("VirtualTableList database tree", () => {
     expect(loadDatabaseEntities.mock.calls[0][1]).toEqual({ database: "b", force: false });
 
     store.state.databaseEntities = {
-      b: { status: "loaded", tables: [usersB, eventsB], routines: [] },
+      b: { status: "loaded", tables: [usersB, eventsB, salesB], routines: [] },
     };
     await Vue.nextTick();
     await Vue.nextTick();
 
+    const b2 = vm.items.find((i: any) => i.key === "database::b");
+    const bSchemas = vm.items.filter((i: any) => i.type === "schema" && i.parent === b2);
+    expect(bSchemas.map((i: any) => i.entity)).toEqual(["public", "reporting"]);
+    const shownSchemas = vm.displayItems.filter((i: any) => i.type === "schema" && i.parent === b2).map((i: any) => i.entity);
+    expect(shownSchemas).toEqual(["public", "reporting"]);
     const bChildren = vm.displayItems.filter((i: any) => i.type === "table" && i.database === "b").map((i: any) => i.entity.name);
     expect(bChildren).toEqual(["users", "events"]);
     expect(tableNames()).toEqual(expect.arrayContaining(["events"]));
@@ -163,7 +169,8 @@ describe("VirtualTableList database tree", () => {
 
   it("pins and hidden entities apply per database", async () => {
     const pin = { databaseName: "b", schemaName: "public", entityName: "users", entityType: "table" };
-    const hidden = { databaseName: "b", schemaName: "public", entityName: "events", entityType: "table" };
+    // users exists in both databases; only b's copy is pinned and hidden
+    const hidden = { databaseName: "b", schemaName: "public", entityName: "users", entityType: "table" };
     const { vm } = mountList({
       pins: [pin],
       hiddenEntities: [hidden],
@@ -175,7 +182,8 @@ describe("VirtualTableList database tree", () => {
 
     expect(item("b", "users").pinned).toBe(true);
     expect(item(null, "users").pinned).toBe(false);
-    expect(item("b", "events").hidden).toBe(true);
-    expect(item(null, "orders").hidden).toBe(false);
+    expect(item("b", "users").hidden).toBe(true);
+    expect(item(null, "users").hidden).toBe(false);
+    expect(item("b", "events").hidden).toBe(false);
   });
 });
