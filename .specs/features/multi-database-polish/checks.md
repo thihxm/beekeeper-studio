@@ -31,6 +31,7 @@ Proof: `VU tests/vitest/unit/lib/utility/UtilityConnection.spec.ts -t "keeps the
 
 **C7** - When `conn/listInaccessibleDatabases` returns `["secret"]`, `updateDatabaseList` sets `inaccessibleDatabases` to `["secret"]`. When it rejects, it sets `[]` and `databaseList` is still committed (AC 7) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "database list records inaccessible databases"`
+Proof: `VU tests/vitest/unit/handlers/accessDenied.spec.ts -t "the utility lists inaccessible databases from the active client"`
 
 **C8** - When `conn/listTables` for `b` rejects with `code DATABASE_ACCESS_DENIED`, `loadDatabaseEntities("b")` leaves `"b"` in `inaccessibleDatabases` (AC 8) ✅
 Proof: `VU tests/vitest/unit/store/databaseEntities.spec.ts -t "access denied on load locks the database"`
@@ -59,10 +60,14 @@ Proof: `VU tests/vitest/unit/common/appdb/databaseLabels.spec.ts -t "one row per
 **C15** - Choosing `purple` for `b` dispatches the save with `{ databaseName: "b", color: "purple" }`, and the `b` node's label bar has class `connection-label-color-purple` (AC 15) ✅
 Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "setting a color saves it"`
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "database label bar shows its color"`
+Proof: `VU tests/vitest/unit/components/databaseColorFlow.spec.ts -t "the database menu opens the color modal"`
+Proof: `VU tests/vitest/unit/components/databaseColorFlow.spec.ts -t "the color modal saves the picked color"`
+Proof: `VU tests/vitest/unit/components/databaseColorFlow.spec.ts -t "the entity tree mounts the color modal"`
 
 **C16** - Choosing `default` for `b` sends `appdb/databaseLabels/remove` for its row, and the bar has no `connection-label-color-` class (AC 16) ✅
 Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "default removes the color"`
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "database label bar shows its color"`
+Proof: `VU tests/vitest/unit/components/databaseColorFlow.spec.ts -t "the color modal removes the color with default"`
 
 **C17** - A tab on `b` (purple) has a `.tab-color-stripe` and `.tab-database` with class `connection-label-color-purple`. A tab on the default database `a` (green) has `connection-label-color-green` (AC 17) ✅
 Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "tab shows its database color"`
@@ -72,6 +77,7 @@ Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "unsaved connection
 
 **C19** - `loadDatabaseLabels` for connection `{ id: 3, workspaceId: -1 }` sends `appdb/databaseLabels/find` with `where { connectionId: 3, workspaceId: -1 }` and stores the result (AC 19) ✅
 Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "loads labels of the connection"`
+Proof: `VU tests/vitest/unit/components/databaseColorFlow.spec.ts -t "loads the colors of the connection"`
 
 ### S3 - reveal the active tab's table · 4 files · 47 KB · ~12k
 
@@ -160,3 +166,8 @@ Size from `wc -c` on the files each slice touches, divided by 4:
 - S4 adds ≈ 7k → 102k
 - Test templates add ≈ 8k, for **≈ 110k, under the 150k budget**
 - Mechanism: one builder, no ask (the estimate fits)
+
+- **Boundary:** C1-C32 closed at `bda383924`
+- **Settled mid-build:** verification rounds 1 and 2 found wiring with no proof: the reveal event, the color modal's open, save and mount, label loading on connect, the utility privilege route, and errno-only MySQL matching. Proof lines were added to C7, C15, C16 and C19 for the tests that now cover it. Existing proofs and claims are unchanged.
+- **Abandoned:** none
+

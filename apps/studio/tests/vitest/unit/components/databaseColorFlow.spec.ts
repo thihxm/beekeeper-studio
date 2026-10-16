@@ -1,10 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
-import { createLocalVue, mount } from "@vue/test-utils";
+import { createLocalVue, mount, shallowMount } from "@vue/test-utils";
 import Vuex from "vuex";
 import { AppEventMixin, AppEvent } from "@/common/AppEvent";
 import DatabaseColorModal from "@/components/sidebar/core/DatabaseColorModal.vue";
 import VirtualTableList from "@/components/sidebar/core/table_list/VirtualTableList.vue";
 import CoreInterface from "@/components/CoreInterface.vue";
+import TableList from "@/components/sidebar/core/TableList.vue";
+
+// TableList splits its panes with split.js, which needs a real layout
+vi.mock("split.js", () => ({ default: () => ({ destroy: vi.fn(), setSizes: vi.fn() }) }));
 
 const localVue = createLocalVue();
 localVue.use(Vuex);
@@ -22,13 +26,19 @@ describe("setting a database color from the tree", () => {
     expect(trigger).toHaveBeenCalledWith(AppEvent.openDatabaseColorModal, "b");
   });
 
-  it("the color modal saves the picked color for its database", async () => {
+  // BaseModal wraps a form and emits `submit` with a close callback; this stand-in
+  // keeps exactly that contract so pressing Save goes through @submit
+  const FormModal = {
+    template: '<form class="color-form" @submit.prevent="$emit(\'submit\', $event, () => $emit(\'closed\'))"><slot /><slot name="footer" :close="() => {}" /></form>',
+  };
+
+  function mountModal(currentColor: string | null) {
     const setColor = vi.fn();
     const store = new Vuex.Store({
       modules: {
         databaseLabels: {
           namespaced: true,
-          getters: { colorFor: () => (db: string) => (db === "b" ? "red" : null) },
+          getters: { colorFor: () => (db: string) => (db === "b" ? currentColor : null) },
           actions: { setColor },
         },
       },
@@ -37,10 +47,14 @@ describe("setting a database color from the tree", () => {
     const wrapper = mount(DatabaseColorModal, {
       localVue,
       store,
-      stubs: { BaseModal: { template: "<div><slot /></div>" }, ColorPicker: true },
+      stubs: { BaseModal: FormModal, ColorPicker: true },
       mocks: { $modal: { show } },
     });
-    const vm = wrapper.vm as any;
+    return { wrapper, vm: wrapper.vm as any, setColor, show };
+  }
+
+  it("the color modal saves the picked color for its database", async () => {
+    const { wrapper, vm, setColor, show } = mountModal("red");
 
     // opened through the event the tree menu triggers
     vm.$root.$emit(AppEvent.openDatabaseColorModal, "b");
@@ -49,12 +63,45 @@ describe("setting a database color from the tree", () => {
     expect(vm.color).toBe("red");
 
     vm.color = "purple";
-    const close = vi.fn();
-    await vm.save(new Event("submit"), close);
+    await wrapper.find("form.color-form").trigger("submit");
 
     expect(setColor).toHaveBeenCalledTimes(1);
     expect(setColor.mock.calls[0][1]).toEqual({ databaseName: "b", color: "purple" });
-    expect(close).toHaveBeenCalled();
+  });
+
+  it("the color modal removes the color with default", async () => {
+    const { wrapper, vm, setColor } = mountModal("red");
+    vm.$root.$emit(AppEvent.openDatabaseColorModal, "b");
+
+    vm.color = "default";
+    await wrapper.find("form.color-form").trigger("submit");
+
+    expect(setColor.mock.calls[0][1]).toEqual({ databaseName: "b", color: "default" });
+  });
+
+  it("the entity tree mounts the color modal", () => {
+    const store = new Vuex.Store({
+      state: {
+        tables: [], routines: [], database: "a", tablesLoading: null, supportedFeatures: {},
+        connectionType: "postgresql", selectedSidebarItem: null, usedConfig: { readOnlyMode: false },
+        entityFilter: { filterQuery: undefined, showTables: true, showViews: true, showRoutines: true },
+      },
+      getters: {
+        filteredTables: () => [], filteredRoutines: () => [], dialectData: () => ({ disabledFeatures: {} }),
+        dialect: () => "postgresql",
+        "pins/pinnedEntities": () => [], "pins/orderedPins": () => [],
+        "hideEntities/totalEntities": () => 0, "hideEntities/databaseEntities": () => [], "hideEntities/databaseSchemas": () => [],
+      },
+    });
+    (window as any).platformInfo = { ...(window as any).platformInfo, isDevelopment: false };
+    const wrapper = shallowMount(TableList, {
+      localVue,
+      store,
+      stubs: { portal: { template: "<div><slot /></div>" } },
+      mocks: { $bksConfig: { ui: { tableList: { itemHeight: 20 } } } },
+    });
+
+    expect(wrapper.findComponent(DatabaseColorModal).exists()).toBe(true);
   });
 });
 
