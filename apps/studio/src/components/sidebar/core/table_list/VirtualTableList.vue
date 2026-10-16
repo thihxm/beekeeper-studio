@@ -458,7 +458,8 @@ export default Vue.extend({
         this.database,
         this.databaseEntities,
         this.inaccessibleDatabases,
-        this.colorFor,
+        // the colorFor getter returns the same function as labels change; watch the labels themselves
+        this.databaseLabelRecords,
         this.pins,
         this.hiddenEntityRecords,
         this.hiddenSchemaRecords,
@@ -488,6 +489,7 @@ export default Vue.extend({
         `No permission to access database ${name} with the current account${username ? ` (${username})` : ""}`;
     },
     ...mapState("pins", ["pins"]),
+    ...mapState("databaseLabels", { databaseLabelRecords: "labels" }),
     ...mapState("hideEntities", {
       hiddenEntityRecords: "entities",
       hiddenSchemaRecords: "schemas",

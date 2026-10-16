@@ -248,4 +248,19 @@ describe("VirtualTableList database tree", () => {
     expect(bar("c").classes()).toContain("connection-label-color-purple");
     expect(bar("b").classes().filter((c) => c.startsWith("connection-label-color-"))).toEqual([]);
   });
+
+  it("database label bar follows color changes", async () => {
+    const { store } = mountList();
+    await Vue.nextTick();
+    const bar = (name: string) =>
+      databaseRows().wrappers.find((r) => r.find(".table-name").text() === name).find(".database-label");
+    expect(bar("c").classes().filter((c) => c.startsWith("connection-label-color-"))).toEqual([]);
+
+    // labels load after the tree is built (on connect) and change from the color modal
+    (store.state as any).databaseLabels.labels = [{ databaseName: "c", color: "purple" }];
+    await Vue.nextTick();
+    await Vue.nextTick();
+
+    expect(bar("c").classes()).toContain("connection-label-color-purple");
+  });
 });

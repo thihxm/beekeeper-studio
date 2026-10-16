@@ -606,5 +606,7 @@
     height: 2px;
     background-color: var(--connection-label-color, transparent);
     pointer-events: none;
+    // above the close button's gradient, which covers the right end of the tab
+    z-index: 2;
   }
 }
