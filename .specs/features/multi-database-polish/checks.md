@@ -75,19 +75,19 @@ Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "loads labels of th
 
 ### S3 - reveal the active tab's table · 4 files · 47 KB · ~12k
 
-**C20** - `sidebarKeyForTab` for a `table` tab on `public.users` with `databaseName "b"` (default `a`) returns `b::table.public.users`. For the same tab on `a` it returns `table.public.users`. When that tab becomes active, `CoreTabHeader` commits `selectSidebarItem` with that key (AC 20)
+**C20** - `sidebarKeyForTab` for a `table` tab on `public.users` with `databaseName "b"` (default `a`) returns `b::table.public.users`. For the same tab on `a` it returns `table.public.users`. When that tab becomes active, `CoreTabHeader` commits `selectSidebarItem` with that key (AC 20) ✅
 Proof: `VU tests/vitest/unit/components/revealActiveEntity.spec.ts -t "selection key includes the tab database"`
 
-**C21** - `sidebarKeyForTab` for a tab with `entityType "view"` on `public.v` in the default database returns `view.public.v` (AC 21)
+**C21** - `sidebarKeyForTab` for a tab with `entityType "view"` on `public.v` in the default database returns `view.public.v` (AC 21) ✅
 Proof: `VU tests/vitest/unit/components/revealActiveEntity.spec.ts -t "selection key uses the entity type"`
 
-**C22** - With `revealActiveEntity` true, selecting `b::table.public.users` while `b` is collapsed sets `b` and its `public` schema `expanded`, dispatches `loadDatabaseEntities` for `b` if it isn't loaded, and calls `scrollToIndex` with that item's index in `displayItems` (AC 22)
+**C22** - With `revealActiveEntity` true, selecting `b::table.public.users` while `b` is collapsed sets `b` and its `public` schema `expanded`, dispatches `loadDatabaseEntities` for `b` if it isn't loaded, and calls `scrollToIndex` with that item's index in `displayItems` (AC 22) ✅
 Proof: `VU tests/vitest/unit/components/revealActiveEntity.spec.ts -t "reveals the selected table in its database"`
 
-**C23** - With `revealActiveEntity` false, the same selection changes no item's `expanded` and calls `scrollToIndex` 0 times (AC 23)
+**C23** - With `revealActiveEntity` false, the same selection changes no item's `expanded` and calls `scrollToIndex` 0 times (AC 23) ✅
 Proof: `VU tests/vitest/unit/components/revealActiveEntity.spec.ts -t "reveal can be turned off"`
 
-**C24** - `default.config.ini` `[ui.tableList]` declares `revealActiveEntity = true`, and `bksConfig.d.ts` types it (AC 24, door 4)
+**C24** - `default.config.ini` `[ui.tableList]` declares `revealActiveEntity = true`, and `bksConfig.d.ts` types it (AC 24, door 4) ✅
 Proof: `grep -nE "^revealActiveEntity = true" default.config.ini && grep -c "revealActiveEntity" src/typings/bksConfig.d.ts`
 
 ### S4 - plugin API · 2 files · 27 KB · ~7k

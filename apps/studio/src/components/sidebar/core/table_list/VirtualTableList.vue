@@ -124,6 +124,8 @@ export default Vue.extend({
       estimateItemHeight: this.$bksConfig.ui.tableList.itemHeight, // height of collapsed item
       keeps: 30,
       generated: false,
+      /** a key to reveal once its database finishes loading */
+      pendingReveal: null as string | null,
     };
   },
   methods: {
@@ -277,6 +279,29 @@ export default Vue.extend({
       if (item.isDefault || item.locked) return;
       this.$store.dispatch("loadDatabaseEntities", { database: item.entity, force });
     },
+    /** Expand the tree down to `key` and scroll to it, if the config allows */
+    revealItem(key: string) {
+      if (!this.$bksConfig.ui.tableList.revealActiveEntity) return;
+      let item = this.items.find((i: Item) => i.key === key);
+      if (!item) {
+        // an entity of a database that isn't loaded yet: open it, and reveal once it loads
+        const database = key.includes("::") ? key.split("::")[0] : null;
+        const databaseItem = database && this.items.find((i: Item) => i.type === "database" && i.entity === database);
+        if (!databaseItem || databaseItem.locked) return;
+        databaseItem.expanded = true;
+        this.pendingReveal = key;
+        this.loadDatabase(databaseItem);
+        this.generateDisplayItems();
+        return;
+      }
+      this.pendingReveal = null;
+      for (let parent = item.parent; parent; parent = parent.parent) {
+        parent.expanded = true;
+      }
+      this.generateDisplayItems();
+      const index = this.displayItems.indexOf(item);
+      if (index >= 0) this.$refs.vList?.scrollToIndex(index);
+    },
     expandDatabase(name: string) {
       const item = this.items.find((i: Item) => i.type === "database" && i.entity === name);
       if (!item) return;
@@ -419,6 +444,7 @@ export default Vue.extend({
           handler: this.handleTogglePinned,
         },
         { event: AppEvent.expandDatabase, handler: this.expandDatabase },
+        { event: AppEvent.revealSidebarItem, handler: this.revealItem },
       ];
     },
     multipleDatabases() {
@@ -471,6 +497,7 @@ export default Vue.extend({
     regenerateOn() {
       this.generateItems();
       this.generateDisplayItems();
+      if (this.pendingReveal) this.$nextTick(() => this.pendingReveal && this.revealItem(this.pendingReveal));
     },
     minimalMode() {
       this.generateDisplayItems();

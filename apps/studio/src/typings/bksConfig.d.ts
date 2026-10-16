@@ -587,6 +587,7 @@ declare interface IBksConfig {
         };
         tableList: {
             itemHeight: number;
+            revealActiveEntity: boolean;
         };
         tableTable: {
             defaultColumnWidth: number;

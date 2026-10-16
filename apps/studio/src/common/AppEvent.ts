@@ -28,6 +28,8 @@ export enum AppEvent {
   expandDatabase = 'expandDatabase',
   /** pick the label color of a database: `trigger(AppEvent.openDatabaseColorModal, databaseName)` */
   openDatabaseColorModal = 'openDatabaseColorModal',
+  /** expand and scroll the sidebar tree to an entity key (see `sidebarKeyForTab`) */
+  revealSidebarItem = 'revealSidebarItem',
   loadSelectTop = 'loadSelectTop',
   quickSearch = 'quickSearch',
   promptLogin = 'cloud_signin',

@@ -94,6 +94,8 @@
 <script>
 import TabIcon from './tab/TabIcon.vue'
 import { mapState } from 'vuex'
+import { sidebarKeyForTab } from '@/common/sidebarKey'
+import { AppEvent } from '@/common/AppEvent'
 import _ from 'lodash'
 
   export default {
@@ -148,12 +150,13 @@ import _ from 'lodash'
     },
     watch: {
       activeTab() {
-        if(!this.activeTab){
+        // every header watches the active tab; only the active one acts
+        if (!this.activeTab || this.activeTab.id !== this.tab.id) {
            return;
          }
-         const { schemaName, tabType, tableName } = this.activeTab;
-         const newSelectedSidebarItem = `${tabType}.${schemaName}.${tableName}`;
-         this.$store.commit('selectSidebarItem', newSelectedSidebarItem);
+         const key = sidebarKeyForTab(this.activeTab, this.$store.state.database);
+         this.$store.commit('selectSidebarItem', key);
+         if (key) this.trigger(AppEvent.revealSidebarItem, key);
       },
     },
     computed: {
