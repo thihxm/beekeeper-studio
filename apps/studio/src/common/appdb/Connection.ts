@@ -11,6 +11,7 @@ import { OpenTab } from "./models/OpenTab"
 import { LicenseKey } from "./models/LicenseKey"
 import { HiddenEntity } from "./models/HiddenEntity"
 import { HiddenSchema } from "./models/HiddenSchema"
+import { DatabaseLabel } from "./models/DatabaseLabel"
 import { PinnedConnection } from "./models/PinnedConnection"
 import { TokenCache } from "./models/token_cache"
 import { InstallationId } from "./models/installation_id"
@@ -35,6 +36,7 @@ const models = [
   LicenseKey,
   HiddenEntity,
   HiddenSchema,
+  DatabaseLabel,
   PinnedConnection,
   TokenCache,
   InstallationId,

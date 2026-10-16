@@ -88,6 +88,8 @@ interface DatabaseItem extends BaseItem {
   isDefault: boolean;
   /** the current account can't open it */
   locked: boolean;
+  /** label color from the connection palette, or null */
+  color: string | null;
   status: "idle" | "loading" | "loaded" | "error";
   error?: string;
 }
@@ -227,12 +229,13 @@ export default Vue.extend({
             database: isDefault ? null : name,
             isDefault,
             locked: !isDefault && this.inaccessibleDatabases.includes(name),
+            color: this.colorFor(name),
             status: isDefault ? "loaded" : loaded?.status ?? "idle",
             error: loaded?.error,
             // a locked database never opens, even if it was expanded before the lock
             expanded: !isDefault && this.inaccessibleDatabases.includes(name) ? false : expanded(key, isDefault),
             hidden: false,
-            contextMenu: [],
+            contextMenu: this.databaseMenuOptions,
             parent: root,
             level: 0,
             pinned: false,
@@ -429,6 +432,7 @@ export default Vue.extend({
         this.database,
         this.databaseEntities,
         this.inaccessibleDatabases,
+        this.colorFor,
         this.pins,
         this.hiddenEntityRecords,
         this.hiddenSchemaRecords,
@@ -439,7 +443,17 @@ export default Vue.extend({
       schemaTables: "schemaTables",
       minimalMode: "minimalMode",
       dialectData: "dialectData",
+      colorFor: "databaseLabels/colorFor",
     }),
+    databaseMenuOptions() {
+      return [
+        {
+          name: "Set color",
+          slug: "database-color",
+          handler: ({ item }) => this.trigger(AppEvent.openDatabaseColorModal, item),
+        },
+      ];
+    },
     ...mapState(["database", "databaseList", "databaseEntities", "entityFilter", "inaccessibleDatabases", "usedConfig"]),
     /** tooltip of a locked database node */
     lockedTitle() {

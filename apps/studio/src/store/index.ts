@@ -20,6 +20,7 @@ import { IConnection } from '@/common/interfaces/IConnection'
 import { DataModules } from '@/store/DataModules'
 import { TabModule } from './modules/TabModule'
 import { HideEntityModule } from './modules/HideEntityModule'
+import { DatabaseLabelModule } from './modules/DatabaseLabelModule'
 import { PinConnectionModule } from './modules/PinConnectionModule'
 import { ElectronUtilityConnectionClient } from '@/lib/utility/ElectronUtilityConnectionClient'
 import { connectionForTab } from '@/lib/utility/tabConnection'
@@ -159,6 +160,7 @@ const store = new Vuex.Store<State>({
     licenses: LicenseModule,
     credentials: CredentialsModule,
     hideEntities: HideEntityModule,
+    databaseLabels: DatabaseLabelModule,
     userEnums: UserEnumsModule,
     pinnedConnections: PinConnectionModule,
     multiTableExports: MultiTableExportStoreModule,

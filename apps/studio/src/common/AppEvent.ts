@@ -26,6 +26,8 @@ export enum AppEvent {
   loadTable = 'loadTable',
   /** expand (and load) a database node in the sidebar tree */
   expandDatabase = 'expandDatabase',
+  /** pick the label color of a database: `trigger(AppEvent.openDatabaseColorModal, databaseName)` */
+  openDatabaseColorModal = 'openDatabaseColorModal',
   loadSelectTop = 'loadSelectTop',
   quickSearch = 'quickSearch',
   promptLogin = 'cloud_signin',

@@ -15,6 +15,11 @@
         @contextmenu="$bks.openMenu({id: headerContextMenuId, item: tab, options: contextOptions, event: $event})"
         :class="{ active: selected, 'active-transaction': isTransaction }"
       >
+        <span
+          v-if="tabColor"
+          class="tab-color-stripe"
+          :class="`connection-label-color-${tabColor}`"
+        />
         <tab-icon :tab="tab" />
         <span
           class="tab-title truncate"
@@ -25,6 +30,7 @@
         >{{ scope }}</span><span
           v-if="tabDatabase"
           class="tab-database"
+          :class="tabColor ? `connection-label-color-${tabColor}` : null"
           :title="`Runs on database ${tabDatabase}`"
         >{{ tabDatabase }}</span></span>
         <div class="tab-action">
@@ -199,6 +205,12 @@ import _ from 'lodash'
         if (this.tab.tabType === 'query') return this.tab.databaseName ?? defaultDatabase ?? null
         if (this.tab.databaseName != null && this.tab.databaseName !== defaultDatabase) return this.tab.databaseName
         return null
+      },
+      /** label color of the tab's database */
+      tabColor() {
+        if (!['query', 'table', 'table-properties'].includes(this.tab.tabType)) return null
+        const database = this.tab.databaseName ?? this.$store.state.database
+        return this.$store.getters['databaseLabels/colorFor'](database)
       },
       scope() {
         if (this.tab.titleScope) {

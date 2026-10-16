@@ -7,11 +7,14 @@ const localVue = createLocalVue();
 localVue.use(Vuex);
 localVue.directive("hotkey", {});
 
-function mountHeader(tab: any, defaultDatabase = "a") {
+function mountHeader(tab: any, defaultDatabase = "a", colors: Record<string, string> = {}) {
   const store = new Vuex.Store({
     state: { database: defaultDatabase },
     getters: { minimalMode: () => false, dialectData: () => ({ disabledFeatures: {} }) },
-    modules: { tabs: { namespaced: true, state: { active: null } } },
+    modules: {
+      tabs: { namespaced: true, state: { active: null } },
+      databaseLabels: { namespaced: true, getters: { colorFor: () => (db: string) => colors[db] ?? null } },
+    },
   });
   return mount(CoreTabHeader, {
     localVue,
@@ -29,5 +32,19 @@ describe("CoreTabHeader", () => {
 
     const onDefault = mountHeader({ id: 2, tabType: "query", title: "Query #2", databaseName: "a" });
     expect(onDefault.find(".tab-database").text()).toBe("a");
+  });
+
+  it("tab shows its database color", () => {
+    const colors = { a: "green", b: "purple" };
+    const onB = mountHeader({ id: 3, tabType: "table", title: "orders", databaseName: "b" }, "a", colors);
+    expect(onB.find(".tab-color-stripe").classes()).toContain("connection-label-color-purple");
+    expect(onB.find(".tab-database").classes()).toContain("connection-label-color-purple");
+
+    const onDefault = mountHeader({ id: 4, tabType: "query", title: "Query #3", databaseName: null }, "a", colors);
+    expect(onDefault.find(".tab-color-stripe").classes()).toContain("connection-label-color-green");
+    expect(onDefault.find(".tab-database").classes()).toContain("connection-label-color-green");
+
+    const uncolored = mountHeader({ id: 5, tabType: "query", title: "Query #4", databaseName: "c" }, "a", colors);
+    expect(uncolored.find(".tab-color-stripe").exists()).toBe(false);
   });
 });

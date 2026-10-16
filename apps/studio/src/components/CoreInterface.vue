@@ -144,6 +144,7 @@
         async handler() {
           if (!this.usedConfig) return
           await this.$store.dispatch('pins/loadPins');
+          await this.$store.dispatch('databaseLabels/load');
         }
       },
       initializing() {

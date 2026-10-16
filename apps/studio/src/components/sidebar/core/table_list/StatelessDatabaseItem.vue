@@ -5,6 +5,7 @@
     :tabindex="locked ? 0 : null"
     :aria-disabled="locked ? 'true' : null"
     v-tooltip="locked ? { content: lockedTitle, trigger: 'hover focus' } : null"
+    @contextmenu="$emit('contextmenu', $event)"
   >
     <div class="folder-group schema">
       <a
@@ -16,6 +17,10 @@
         <span class="btn-fab open-close">
           <i class="dropdown-icon material-icons">keyboard_arrow_right</i>
         </span>
+        <span
+          class="database-label"
+          :class="color ? `connection-label-color-${color}` : null"
+        />
         <i
           title="Database"
           class="schema-icon item-icon material-icons"
@@ -61,11 +66,20 @@
 
 <script lang="ts">
 export default {
-  props: ["name", "expanded", "isDefault", "locked", "lockedTitle", "status", "error"],
+  props: ["name", "expanded", "isDefault", "locked", "lockedTitle", "color", "status", "error"],
 };
 </script>
 
 <style lang="scss" scoped>
+.database-label {
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  border-radius: 3px;
+  margin-right: 0.3rem;
+  flex-shrink: 0;
+  background-color: var(--connection-label-color, transparent);
+}
 .database-item.locked {
   opacity: 0.45;
   .folder-btn {

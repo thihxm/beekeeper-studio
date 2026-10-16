@@ -52,25 +52,25 @@ Proof: `VU tests/vitest/unit/components/TabWithTable.spec.ts -t "locked database
 
 ### S2 - database colors · 7 files · 35 KB · ~9k
 
-**C14** - Migration `20261016_create_database_labels` creates table `database_labels` with unique index `database_labels_connection_database` on `(connectionId, workspaceId, databaseName)`. Saving the color of `(1, -1, "b")` twice through the label handler leaves 1 row holding the second color (AC 14, door 1)
+**C14** - Migration `20261016_create_database_labels` creates table `database_labels` with unique index `database_labels_connection_database` on `(connectionId, workspaceId, databaseName)`. Saving the color of `(1, -1, "b")` twice through the label handler leaves 1 row holding the second color (AC 14, door 1) ✅
 Proof: `grep -n "CREATE UNIQUE INDEX database_labels_connection_database ON database_labels (connectionId, workspaceId, databaseName)" src/migration/20261016_create_database_labels.js && grep -n "create_database_labels" src/migration/index.js`
 Proof: `VU tests/vitest/unit/common/appdb/databaseLabels.spec.ts -t "one row per connection workspace and database"`
 
-**C15** - Choosing `purple` for `b` dispatches the save with `{ databaseName: "b", color: "purple" }`, and the `b` node's label bar has class `connection-label-color-purple` (AC 15)
+**C15** - Choosing `purple` for `b` dispatches the save with `{ databaseName: "b", color: "purple" }`, and the `b` node's label bar has class `connection-label-color-purple` (AC 15) ✅
 Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "setting a color saves it"`
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "database label bar shows its color"`
 
-**C16** - Choosing `default` for `b` sends `appdb/databaseLabels/remove` for its row, and the bar has no `connection-label-color-` class (AC 16)
+**C16** - Choosing `default` for `b` sends `appdb/databaseLabels/remove` for its row, and the bar has no `connection-label-color-` class (AC 16) ✅
 Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "default removes the color"`
 Proof: `VU tests/vitest/unit/components/VirtualTableList.spec.ts -t "database label bar shows its color"`
 
-**C17** - A tab on `b` (purple) has a `.tab-color-stripe` and `.tab-database` with class `connection-label-color-purple`. A tab on the default database `a` (green) has `connection-label-color-green` (AC 17)
+**C17** - A tab on `b` (purple) has a `.tab-color-stripe` and `.tab-database` with class `connection-label-color-purple`. A tab on the default database `a` (green) has `connection-label-color-green` (AC 17) ✅
 Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "tab shows its database color"`
 
-**C18** - On a connection with `id: null`, setting `b` to `purple` updates `databaseLabels` in the store and sends 0 `appdb/databaseLabels/*` requests (AC 18)
+**C18** - On a connection with `id: null`, setting `b` to `purple` updates `databaseLabels` in the store and sends 0 `appdb/databaseLabels/*` requests (AC 18) ✅
 Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "unsaved connection keeps colors in the session"`
 
-**C19** - `loadDatabaseLabels` for connection `{ id: 3, workspaceId: -1 }` sends `appdb/databaseLabels/find` with `where { connectionId: 3, workspaceId: -1 }` and stores the result (AC 19)
+**C19** - `loadDatabaseLabels` for connection `{ id: 3, workspaceId: -1 }` sends `appdb/databaseLabels/find` with `where { connectionId: 3, workspaceId: -1 }` and stores the result (AC 19) ✅
 Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "loads labels of the connection"`
 
 ### S3 - reveal the active tab's table · 4 files · 47 KB · ~12k

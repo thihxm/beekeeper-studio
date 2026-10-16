@@ -172,6 +172,7 @@
     </nav>
 
     <portal to="modals">
+      <DatabaseColorModal />
       <HiddenEntitiesModal
         :hidden-entities="hiddenEntities"
         :hidden-schemas="hiddenSchemas"
@@ -183,6 +184,7 @@
 <script lang="ts">
   import _ from 'lodash'
   import HiddenEntitiesModal from './HiddenEntitiesModal.vue'
+  import DatabaseColorModal from './DatabaseColorModal.vue'
   import Split from 'split.js'
   import { mapState, mapGetters } from 'vuex'
   import TableFilter from '../../../mixins/table_filter'
@@ -195,7 +197,7 @@
 
   export default {
     mixins: [TableFilter, TableListContextMenus],
-    components: { PinnedTableList, HiddenEntitiesModal, VirtualTableList },
+    components: { PinnedTableList, HiddenEntitiesModal, DatabaseColorModal, VirtualTableList },
     data() {
       return {
         isDev: window.platformInfo.isDevelopment,

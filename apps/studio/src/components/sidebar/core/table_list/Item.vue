@@ -5,11 +5,20 @@
     :expanded="source.expanded"
     :is-default="source.isDefault"
     :locked="source.locked"
+    :color="source.color"
     :locked-title="lockedTitle(source.entity)"
     :status="source.status"
     :error="source.error"
     @expand="onExpand($event, source)"
     @retry="onRetry($event, source)"
+    @contextmenu.prevent.stop="
+      $bks.openMenu({
+        id: 'entity.database',
+        event: $event,
+        item: source.entity,
+        options: source.contextMenu,
+      })
+    "
   />
   <stateless-sidebar-folder
     v-else-if="source.type === 'schema'"

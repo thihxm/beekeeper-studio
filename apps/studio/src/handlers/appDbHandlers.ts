@@ -15,6 +15,8 @@ import { QueryFolder } from "@/common/appdb/models/QueryFolder";
 import { ConnectionFolder } from "@/common/appdb/models/ConnectionFolder";
 import { IQueryFolder, IConnectionFolder } from "@/common/interfaces/IQueryFolder";
 import { HiddenSchema } from "@/common/appdb/models/HiddenSchema";
+import { DatabaseLabel } from "@/common/appdb/models/DatabaseLabel";
+import { TransportDatabaseLabel } from "@/common/transport/TransportDatabaseLabel";
 import { TransportOpenTab } from "@/common/transport/TransportOpenTab";
 import { TransportHiddenEntity, TransportHiddenSchema } from "@/common/transport/TransportHidden";
 import { TransportPinnedEntity } from "@/common/transport/TransportPinnedEntity";
@@ -218,6 +220,10 @@ export const AppDbHandlers = {
   ...handlersFor<TransportHiddenEntity>('hiddenEntity', HiddenEntity),
   ...handlersFor<TransportFormatterPreset>('formatterPreset', FormatterPreset),
   ...handlersFor<TransportHiddenSchema>('hiddenSchema', HiddenSchema),
+  ...handlersFor<TransportDatabaseLabel>('databaseLabels', DatabaseLabel),
+  'appdb/databaseLabels/setColor': async function({ label }: { label: Pick<TransportDatabaseLabel, 'connectionId' | 'workspaceId' | 'databaseName' | 'color'> }) {
+    return await defaultTransform(await DatabaseLabel.setColor(label), DatabaseLabel);
+  },
   ...handlersFor<TransportUserSetting>('setting', UserSetting, transformSetting),
   ...handlersFor<TransportCloudCredential>('credential', CloudCredential),
   ...handlersFor<TransportLicenseKey>('license', LicenseKey, transformLicense),

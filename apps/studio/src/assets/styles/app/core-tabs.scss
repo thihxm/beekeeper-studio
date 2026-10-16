@@ -169,6 +169,16 @@
         font-style: italic;
         font-weight: normal!important;
       }
+      .tab-database.connection-label-color-red,
+      .tab-database.connection-label-color-orange,
+      .tab-database.connection-label-color-yellow,
+      .tab-database.connection-label-color-green,
+      .tab-database.connection-label-color-blue,
+      .tab-database.connection-label-color-purple,
+      .tab-database.connection-label-color-pink {
+        background: color-mix(in srgb, var(--connection-label-color) 25%, transparent);
+        color: $text-dark;
+      }
       .tab-database {
         margin-left: 0.35rem;
         padding: 0 0.3rem;
@@ -583,5 +593,18 @@
 .beekeeper-studio-minimal-mode {
   .core-tabs .nav-tabs .nav-link.active {
     font-weight: inherit;
+  }
+}
+
+// the database color of a tab, as a stripe along its top edge (.nav-link is already relative)
+.core-tabs .nav-link {
+  .tab-color-stripe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--connection-label-color, transparent);
+    pointer-events: none;
   }
 }

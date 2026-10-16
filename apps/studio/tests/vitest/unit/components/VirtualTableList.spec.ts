@@ -30,6 +30,7 @@ interface Options {
   hiddenEntities?: any[];
   inaccessibleDatabases?: string[];
   username?: string | null;
+  colors?: Record<string, string>;
 }
 
 function makeStore(opts: Options = {}) {
@@ -62,6 +63,13 @@ function makeStore(opts: Options = {}) {
     modules: {
       pins: { namespaced: true, state: { pins: opts.pins ?? [] } },
       hideEntities: { namespaced: true, state: { entities: opts.hiddenEntities ?? [], schemas: [] } },
+      databaseLabels: {
+        namespaced: true,
+        state: { labels: Object.entries(opts.colors ?? {}).map(([databaseName, color]) => ({ databaseName, color })) },
+        getters: {
+          colorFor: (state: any) => (db: string) => state.labels.find((l: any) => l.databaseName === db)?.color ?? null,
+        },
+      },
     },
   });
   return { store, loadDatabaseEntities };
@@ -229,5 +237,15 @@ describe("VirtualTableList database tree", () => {
     await Vue.nextTick();
     const anonymous = databaseRows().wrappers.find((r) => r.find(".table-name").text() === "b");
     expect((anonymous.element as any).__tooltip.content).toBe("No permission to access database b with the current account");
+  });
+
+  it("database label bar shows its color", async () => {
+    mountList({ colors: { c: "purple" } });
+    await Vue.nextTick();
+    const bar = (name: string) =>
+      databaseRows().wrappers.find((r) => r.find(".table-name").text() === name).find(".database-label");
+
+    expect(bar("c").classes()).toContain("connection-label-color-purple");
+    expect(bar("b").classes().filter((c) => c.startsWith("connection-label-color-"))).toEqual([]);
   });
 });
