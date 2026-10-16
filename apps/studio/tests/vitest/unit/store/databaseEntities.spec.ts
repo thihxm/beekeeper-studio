@@ -74,4 +74,47 @@ describe("databaseEntities", () => {
 
     expect(store.state.databaseEntities).toEqual({})
   })
+
+  it("loads columns of another database's table from that database, in place", async () => {
+    await store.dispatch("loadDatabaseEntities", { database: "b" })
+    const orders = store.getters.tablesFor("b").find((t) => t.name === "orders")
+    const defaultTables = store.state.tables.length
+    send.mockImplementation(async (channel: string, args: any = {}) => {
+      if (channel === "conn/listTableColumns") return [{ columnName: "id", dataType: "int" }]
+      return []
+    })
+
+    await store.dispatch("updateDatabaseTableColumns", { database: "b", table: orders })
+
+    const call = send.mock.calls.find(([channel]) => channel === "conn/listTableColumns")
+    expect(call[1]).toMatchObject({ table: "orders", database: "b" })
+    // same object the open tab holds, now with columns
+    expect(store.getters.tablesFor("b").find((t) => t.name === "orders")).toBe(orders)
+    expect(orders.columns).toEqual([{ columnName: "id", dataType: "int" }])
+    expect(store.state.tables).toHaveLength(defaultTables)
+  })
+
+  it("lists tables, views and materialized views at once, before routines", async () => {
+    const pending: Record<string, ReturnType<typeof deferred>> = {}
+    send.mockImplementation((channel: string) => {
+      pending[channel] = deferred()
+      return pending[channel].promise
+    })
+
+    const loading = store.dispatch("loadDatabaseEntities", { database: "b" })
+    await Promise.resolve()
+    expect(Object.keys(pending).sort()).toEqual(["conn/listMaterializedViews", "conn/listTables", "conn/listViews"])
+
+    pending["conn/listTables"].resolve([{ name: "orders", schema: "public" }])
+    pending["conn/listViews"].resolve([])
+    pending["conn/listMaterializedViews"].resolve([])
+    await new Promise((r) => setTimeout(r, 0))
+
+    // tables show while routines are still loading
+    expect(store.state.databaseEntities.b.status).toBe("loaded")
+    expect(store.getters.tablesFor("b").map((t) => t.name)).toEqual(["orders"])
+    pending["conn/listRoutines"].resolve([{ name: "fn", schema: "public" }])
+    await loading
+    expect(store.getters.routinesFor("b").map((r) => r.name)).toEqual(["fn"])
+  })
 })

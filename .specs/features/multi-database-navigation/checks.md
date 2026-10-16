@@ -182,3 +182,8 @@ Size from `wc -c` on the files each slice touches, divided by 4. Overlapping fil
 - S3 adds `SearchModule.ts` and `QuickSearch.vue` at ≈ 4k → 116k total
 - The test templates (`driverHandlerNullConnection`, `disconnectAfterUtilityRestart`, `NewWorkspaceButton`, `mariadb` integration) add ≈ 4k → **≈ 120k, under the 150k budget**
 - Mechanism: one builder, no ask (the estimate fits)
+
+- **Boundary:** C1-C38 closed at `828ccf539`
+- **Settled mid-build:** manual test on 2026-10-15 found tables of a non-default database didn't open (column loading went to the default database through `updateTableColumns`) and that expanding a database was slow (four sequential list calls). Fixed by routing every tab's column load, FK navigation and relation lookups to the tab's database, and by loading tables, views and materialized views in parallel with routines after. Covered by extra regression tests in `databaseEntities.spec.ts`. No check changed.
+- **Abandoned:** none
+

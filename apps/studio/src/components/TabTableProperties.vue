@@ -373,7 +373,7 @@ export default {
       this.error = null
       // this.properties = null
       try {
-        await this.$store.dispatch('updateTableColumns', this.table)
+        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
         console.log("getting primary keys")
         this.primaryKeys = await this.connection.getPrimaryKeys(this.table.name, this.table.schema);
         if (this.table.entityType === 'table') {

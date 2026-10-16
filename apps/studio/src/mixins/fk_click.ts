@@ -76,7 +76,10 @@ export const FkLinkMixin = {
         rawKeyData.toColumn
 
 
-      let table = this.$store.state.tables.find(t => {
+      // the destination lives in the same database as this tab
+      const database = this.tab?.databaseName ?? this.tabDatabase?.() ?? null
+      const tables = this.$store.getters.tablesFor(database)
+      let table = tables.find(t => {
         return (!schemaName || schemaName === t.schema) && t.name === tableName
       })
 
@@ -84,7 +87,7 @@ export const FkLinkMixin = {
         // might be schema/table instead of table/column, we should check.
         const sn = tableName
         const tn = columnName
-        table = this.$store.state.tables.find(t => {
+        table = tables.find(t => {
           return t.schema === sn && t.name === tn
         })
 
@@ -143,7 +146,7 @@ export const FkLinkMixin = {
       });
 
       const payload = {
-        table, filters, titleScope: values.join(','),
+        table, filters, titleScope: values.join(','), database,
       }
       this.$root.$emit('loadTable', payload)
       this.trigger(AppEvent.selectSecondarySidebarTab, "json-viewer")

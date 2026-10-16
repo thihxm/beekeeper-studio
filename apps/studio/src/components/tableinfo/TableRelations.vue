@@ -133,7 +133,11 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapState(['tables', 'usedConfig']),
+    ...mapState(['usedConfig']),
+    /** entities of the tab's database */
+    tables() {
+      return this.$store.getters.tablesFor(this.tabDatabase())
+    },
     ...mapGetters(['schemas', 'dialect', 'schemaTables', 'dialectData']),
     enabled() {
       return !this.usedConfig.readOnlyMode &&
@@ -309,7 +313,7 @@ export default Vue.extend({
       let tableData = this.findTable(schema, table)
 
       if (tableData?.columns == null) {
-        await this.$store.dispatch('updateTableColumns', tableData)
+        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tabDatabase(), table: tableData })
         tableData = this.findTable(schema, table)
       }
 

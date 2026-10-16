@@ -4,7 +4,7 @@ import Vuex from 'vuex'
 
 import ExportStoreModule from './modules/exports/ExportStoreModule'
 import SettingStoreModule from './modules/settings/SettingStoreModule'
-import { Routine, SupportedFeatures, TableOrView } from "../lib/db/models"
+import { Routine, SupportedFeatures, TableColumn, TableOrView } from "../lib/db/models"
 import { IDbConnectionPublicServer } from '../lib/db/serverTypes'
 import { CoreTab, EntityFilter } from './models'
 import { entityFilter } from '../lib/db/sql_tools'
@@ -429,6 +429,9 @@ const store = new Vuex.Store<State>({
     databaseList(state, dbs: string[]) {
       state.databaseList = dbs
     },
+    databaseTableColumns(_state, { table, columns }: { table: TableOrView, columns: TableColumn[] }) {
+      Vue.set(table, 'columns', columns)
+    },
     databaseEntities(state, { database, entities }: { database: string, entities: Nullable<DatabaseEntities> }) {
       if (entities) {
         Vue.set(state.databaseEntities, database, entities)
@@ -755,10 +758,9 @@ const store = new Vuex.Store<State>({
       const columns = table.entityType === 'materialized-view' ?
         await connection.listMaterializedViewColumns(table.name, table.schema) :
         await connection.listTableColumns(table.name, table.schema)
-      const entities = context.state.databaseEntities[database]
-      if (!entities) return
-      const tables = entities.tables.map((t) => tablesMatch(t, table) ? { ...t, columns } : t)
-      context.commit('databaseEntities', { database, entities: { ...entities, tables } })
+      const existing = context.state.databaseEntities[database]?.tables.find((t) => tablesMatch(t, table))
+      // in place, like the default database's `table` commit, so open tabs keep their table object
+      if (existing) context.commit('databaseTableColumns', { table: existing, columns })
     },
     async updateTableColumns(context, table: TableOrView) {
       log.debug('actions/updateTableColumns', table.name)
@@ -841,22 +843,36 @@ const store = new Vuex.Store<State>({
       if (!force && (current?.status === 'loading' || current?.status === 'loaded')) return
 
       context.commit('databaseEntities', { database, entities: { tables: [], routines: [], status: 'loading' } })
+      const connection: ElectronUtilityConnectionClient = context.getters.connectionFor(database)
       try {
-        const connection: ElectronUtilityConnectionClient = context.getters.connectionFor(database)
-        const onlyTables = await connection.listTables(null)
+        // the first call opens the database's client; the rest share it
+        const [onlyTables, views, materialized] = await Promise.all([
+          connection.listTables(null),
+          connection.listViews(null),
+          connection.listMaterializedViews(null),
+        ])
         onlyTables.forEach((t) => t.entityType = 'table')
-        const views = await connection.listViews(null)
         views.forEach((v) => v.entityType = 'view')
-        const materialized = await connection.listMaterializedViews(null)
         materialized.forEach((v) => v.entityType = 'materialized-view')
-        const routines = await connection.listRoutines(null)
-        routines.forEach((r) => r.entityType = 'routine')
         const tables = onlyTables.concat(views).concat(materialized)
         tables.forEach((t) => t.columns ||= [])
-        context.commit('databaseEntities', { database, entities: { tables, routines: Object.freeze(routines), status: 'loaded' } })
+        context.commit('databaseEntities', { database, entities: { tables, routines: [], status: 'loaded' } })
       } catch (e) {
         log.error(`Loading entities of database ${database} failed`, e)
         context.commit('databaseEntities', { database, entities: { tables: [], routines: [], status: 'error', error: e.message } })
+        return
+      }
+
+      // routines come after, so the tree shows tables without waiting for them
+      try {
+        const routines = await connection.listRoutines(null)
+        routines.forEach((r) => r.entityType = 'routine')
+        const loaded = context.state.databaseEntities[database]
+        if (loaded?.status === 'loaded') {
+          context.commit('databaseEntities', { database, entities: { ...loaded, routines: Object.freeze(routines) } })
+        }
+      } catch (e) {
+        log.error(`Loading routines of database ${database} failed`, e)
       }
     },
     async updateRoutines(context) {
