@@ -27,6 +27,7 @@ const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const { isNonProdAsset } = require('./nonprod_assets.js')
 
 const REPO = 'beekeeper-studio/beekeeper-studio'
 
@@ -59,6 +60,13 @@ function assetEntry(asset, urlBase) {
     type,
     url: `${urlBase}/${encodeURIComponent(name)}`,
   }
+}
+
+function mirroredAssets(assets) {
+  for (const asset of assets.filter((asset) => isNonProdAsset(asset.name))) {
+    console.log(`Skipping non-production asset: ${asset.name}`)
+  }
+  return assets.filter((asset) => !isNonProdAsset(asset.name))
 }
 
 function upload(file, dest, contentType, cacheControl) {
@@ -95,6 +103,10 @@ function main() {
     console.log(`${tag} is a draft; nothing to mirror.`)
     return
   }
+
+  // Non-production builds ride along on the release for download from GitHub
+  // only; they must never reach the bucket or latest.json.
+  release.assets = mirroredAssets(release.assets)
 
   const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-release-'))
   try {
@@ -156,4 +168,8 @@ function main() {
   }
 }
 
-main()
+module.exports = { mirroredAssets }
+
+if (require.main === module) {
+  main()
+}

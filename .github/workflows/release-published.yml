@@ -146,6 +146,9 @@ jobs:
           rm -rf ./artifacts; mkdir artifacts
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern '*.deb' --pattern '*.rpm' --dir ./artifacts
+          # Non-production builds attached by studio-build-non-production.yml
+          # must never reach the apt/rpm repos.
+          node ./.github/scripts/nonprod_assets.js prune ./artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -197,6 +200,9 @@ jobs:
     env:
       SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.snapcraft_token }}
     steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+
       - name: Install Snapcraft
         uses: samuelmeuli/action-snapcraft@v3
         with:
@@ -207,6 +213,8 @@ jobs:
           rm -rf ./artifacts; mkdir artifacts
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern '*.snap' --dir ./artifacts
+          # Non-production builds must never reach the Snap Store.
+          node ./.github/scripts/nonprod_assets.js prune ./artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

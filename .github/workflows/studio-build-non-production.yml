@@ -217,3 +217,33 @@ jobs:
         run: |
           echo "✓ DEB package successfully installs on separate filesystems"
           echo "✓ No hardlinks regression detected"
+
+  # Attach the builds to the draft release of the version they were built from,
+  # so they can be downloaded from the release page instead of the run's
+  # artifacts. Assets are named nonprod-*, never touch the signed production
+  # assets, and release-published.yml keeps them out of every user channel.
+  # Plain master pushes that are not a release commit are a no-op.
+  publish-release-assets:
+    name: Attach builds to the draft release
+    runs-on: ubuntu-22.04
+    needs: [masterbuild, test-deb-hardlinks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: ./nonprod-builds
+
+      - name: Upload non-production assets to the release
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const script = require('./.github/scripts/upload_nonprod_release_assets.js')
+            const { version } = require('./apps/studio/package.json')
+            await script({ github, context, core }, { dir: './nonprod-builds', version })
