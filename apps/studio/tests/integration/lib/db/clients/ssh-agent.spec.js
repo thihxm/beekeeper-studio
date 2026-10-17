@@ -111,8 +111,10 @@ describe('SSH Tunnel Tests (agent mode, #4193)', () => {
   })
 
   afterAll(async () => {
-    if (database) {
-      await database.disconnect()
+    // end the server, not just the client: it owns the ssh tunnel shared by
+    // its database clients, and an open tunnel keeps jest from exiting
+    if (connection) {
+      connection.disconnect()
     }
     if (environment) {
       await environment.stop()

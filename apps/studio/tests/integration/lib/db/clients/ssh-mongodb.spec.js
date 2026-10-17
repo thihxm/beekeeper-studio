@@ -58,6 +58,7 @@ describe("MongoDB SSH Tunnel Tests", () => {
   })
 
   describe("Can SSH via bastion host", () => {
+    let bastionConnection
     let bastionDatabase
 
     beforeAll(async () => {
@@ -79,8 +80,8 @@ describe("MongoDB SSH Tunnel Tests", () => {
         sshBastionPassword: 'password',
       }
 
-      const conn = ConnectionProvider.for(config)
-      bastionDatabase = conn.createConnection('bee')
+      bastionConnection = ConnectionProvider.for(config)
+      bastionDatabase = bastionConnection.createConnection('bee')
       await bastionDatabase.connect()
     })
 
@@ -93,12 +94,21 @@ describe("MongoDB SSH Tunnel Tests", () => {
       if (bastionDatabase) {
         await bastionDatabase.disconnect()
       }
+      if (bastionConnection) {
+        bastionConnection.disconnect()
+      }
     })
   })
 
   afterAll(async () => {
+    // close the mongo client before its tunnel goes away, then end the server:
+    // it owns the ssh tunnel shared by its database clients, and an open
+    // tunnel keeps jest from exiting
     if (database) {
       await database.disconnect()
+    }
+    if (connection) {
+      connection.disconnect()
     }
     if (environment) {
       await environment.stop()
