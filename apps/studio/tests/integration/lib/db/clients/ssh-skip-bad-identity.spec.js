@@ -145,8 +145,10 @@ describe('SSH Tunnel Tests (skip bad ssh-config IdentityFile, #4366)', () => {
   afterAll(async () => {
     // Guard each step: when the connection fails (the bug under test)
     // disconnect() throws, and the agent/containers still need tearing down.
-    if (database) {
-      try { await database.disconnect() } catch (_e) { /* ignore */ }
+    // end the server, not just the client: it owns the ssh tunnel shared by
+    // its database clients, and an open tunnel keeps jest from exiting
+    if (connection) {
+      try { connection.disconnect() } catch (_e) { /* ignore */ }
     }
     if (environment) {
       try { await environment.stop() } catch (_e) { /* ignore */ }

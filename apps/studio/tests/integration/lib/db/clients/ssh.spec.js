@@ -81,6 +81,7 @@ describe("SSH Tunnel Tests", () => {
   })
 
   describe("Can SSH via bastion host and run a query", () => {
+    let bastionConnection
     let bastionDatabase
 
     beforeAll(async () => {
@@ -106,8 +107,8 @@ describe("SSH Tunnel Tests", () => {
         sshBastionPassword: 'password',
       }
 
-      const conn = ConnectionProvider.for(config)
-      bastionDatabase = conn.createConnection('integration_test')
+      bastionConnection = ConnectionProvider.for(config)
+      bastionDatabase = bastionConnection.createConnection('integration_test')
       await bastionDatabase.connect()
     })
 
@@ -117,15 +118,17 @@ describe("SSH Tunnel Tests", () => {
     })
 
     afterAll(async () => {
-      if (bastionDatabase) {
-        await bastionDatabase.disconnect()
+      if (bastionConnection) {
+        bastionConnection.disconnect()
       }
     })
   })
 
   afterAll(async () => {
-    if (database) {
-      await database.disconnect()
+    // end the server, not just the client: it owns the ssh tunnel shared by
+    // its database clients, and an open tunnel keeps jest from exiting
+    if (connection) {
+      connection.disconnect()
     }
     if (environment) {
       await environment.stop()
@@ -194,6 +197,7 @@ describe('SSH Tunnel Tests (none auth, #4358)', () => {
 
   let container
   let sshServer
+  let connection
   let database
   let workDir
   let agentPid
@@ -249,7 +253,7 @@ describe('SSH Tunnel Tests (none auth, #4358)', () => {
       sshUsername: 'root',
     }
 
-    const connection = ConnectionProvider.for(config)
+    connection = ConnectionProvider.for(config)
     database = connection.createConnection('integration_test')
     await database.connect()
   })
@@ -261,8 +265,9 @@ describe('SSH Tunnel Tests (none auth, #4358)', () => {
   })
 
   afterAll(async () => {
-    if (database) {
-      try { await database.disconnect() } catch { /* ignore */ }
+    // sshServer.close() waits for the tunnel's connection to close
+    if (connection) {
+      try { connection.disconnect() } catch { /* ignore */ }
     }
     if (sshServer) {
       await new Promise((resolve) => sshServer.close(() => resolve()))
