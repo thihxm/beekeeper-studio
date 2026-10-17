@@ -854,7 +854,11 @@ export class RedisClient extends BasicDatabaseClient<RedisQueryResult> {
     match = match.trim();
     if (!match.endsWith("*")) match += "*";
 
-    const keys = await this.scanAll(match);
+    // SCAN order is not stable between two full scans (incremental rehash,
+    // keys added or expiring in between), and a full scan may return a key
+    // more than once. Dedupe and sort so offset-based pages never overlap or
+    // skip keys for a stable key set.
+    const keys = _.sortedUniq((await this.scanAll(match)).sort());
 
     const result = await Promise.all(
       keys.slice(offset, offset + limit).map((key) => this.getKeyInfo(key))
