@@ -3,7 +3,12 @@ import { createLocalVue, mount, Wrapper } from "@vue/test-utils";
 import Vuex from "vuex";
 import Vue from "vue";
 import { AppEventMixin } from "@/common/AppEvent";
+import appStore from "@/store";
 import VirtualTableList from "@/components/sidebar/core/table_list/VirtualTableList.vue";
+
+// loads land through the app's own databaseEntities mutation, not by swapping
+// the whole record, so the tree sees exactly the updates the app makes
+const databaseEntitiesMutation = (appStore as any)._modules.root._rawModule.mutations.databaseEntities;
 
 const localVue = createLocalVue();
 localVue.use(Vuex);
@@ -55,6 +60,9 @@ function makeStore(opts: Options = {}) {
         { schema: "public", tables: [usersA, ordersA], routines: [] },
         { schema: "audit", tables: [logA], routines: [] },
       ],
+    },
+    mutations: {
+      databaseEntities: databaseEntitiesMutation,
     },
     actions: {
       loadDatabaseEntities,
@@ -121,9 +129,13 @@ describe("VirtualTableList database tree", () => {
     expect(loadDatabaseEntities).toHaveBeenCalledTimes(1);
     expect(loadDatabaseEntities.mock.calls[0][1]).toEqual({ database: "b", force: false });
 
-    store.state.databaseEntities = {
-      b: { status: "loaded", tables: [usersB, eventsB, salesB], routines: [] },
-    };
+    // loading, then loaded, like loadDatabaseEntities
+    store.commit("databaseEntities", { database: "b", entities: { status: "loading", tables: [], routines: [] } });
+    await Vue.nextTick();
+    store.commit("databaseEntities", {
+      database: "b",
+      entities: { status: "loaded", tables: [usersB, eventsB, salesB], routines: [] },
+    });
     await Vue.nextTick();
     await Vue.nextTick();
 
@@ -146,9 +158,10 @@ describe("VirtualTableList database tree", () => {
     await Vue.nextTick();
     expect(wrapper.find(".database-status").text()).toBe("Loading...");
 
-    store.state.databaseEntities = {
-      b: { status: "error", tables: [], routines: [], error: "permission denied for database b" },
-    };
+    store.commit("databaseEntities", {
+      database: "b",
+      entities: { status: "error", tables: [], routines: [], error: "permission denied for database b" },
+    });
     await Vue.nextTick();
     await Vue.nextTick();
     const status = wrapper.find(".database-status.error");
