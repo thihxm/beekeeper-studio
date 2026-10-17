@@ -22,8 +22,11 @@ function isNonProdAsset(name) {
   return path.basename(name).startsWith(NONPROD_PREFIX)
 }
 
+// GitHub rewrites spaces in asset names to dots, so an asset uploaded as
+// "Beekeeper Studio-6.2.0.dmg" could never be found by that name again. Dashes
+// match the production asset names instead.
 function nonProdAssetName(name) {
-  return `${NONPROD_PREFIX}${path.basename(name)}`
+  return `${NONPROD_PREFIX}${path.basename(name).replace(/\s+/g, '-')}`
 }
 
 // Returns the paths it deleted.

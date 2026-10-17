@@ -69,6 +69,8 @@ describe("non-production release assets", () => {
   describe("marker", () => {
     it("names assets with the nonprod- prefix and recognises only those", () => {
       expect(nonProdAssetName("dist/Beekeeper-Studio-6.2.0.dmg")).toBe("nonprod-Beekeeper-Studio-6.2.0.dmg")
+      // Non-production builds keep the "Beekeeper Studio" product name.
+      expect(nonProdAssetName("Beekeeper Studio Setup 6.2.0.exe")).toBe("nonprod-Beekeeper-Studio-Setup-6.2.0.exe")
       expect(isNonProdAsset("nonprod-beekeeper-studio_6.2.0_amd64.deb")).toBe(true)
       expect(isNonProdAsset("beekeeper-studio_6.2.0_amd64.deb")).toBe(false)
       expect(isNonProdAsset("Beekeeper-Studio-6.2.0-nonprod.dmg")).toBe(false)
@@ -118,9 +120,9 @@ describe("non-production release assets", () => {
 
   describe("upload_nonprod_release_assets.js", () => {
     beforeEach(() => {
-      touch(dir, "macos-14/Beekeeper-Studio-6.2.0-arm64.dmg")
+      touch(dir, "macos-14/Beekeeper Studio-6.2.0-arm64.dmg")
       touch(dir, "macos-14/latest-mac.yml")
-      touch(dir, "windows-2022/Beekeeper-Studio-Setup-6.2.0.exe")
+      touch(dir, "windows-2022/Beekeeper Studio Setup 6.2.0.exe")
       touch(dir, "windows-2022/latest.yml")
     })
 
