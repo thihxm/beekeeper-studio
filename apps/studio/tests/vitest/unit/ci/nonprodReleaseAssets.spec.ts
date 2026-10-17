@@ -16,6 +16,42 @@ const uploadNonProdAssets = load(path.join(scriptsDir, "upload_nonprod_release_a
 
 const SHA = "c0ffee"
 
+// Every file a release build produces, as the unsigned --publish never build
+// names it on each runner (electron-builder keeps the spaces in "Beekeeper
+// Studio" when it is not publishing), next to the name studio-publish.yml's
+// signed build gives the same file on the release.
+const BUILD_OUTPUTS: [string, string][] = [
+  ["macos-14/Beekeeper Studio-6.2.0-arm64.dmg", "Beekeeper-Studio-6.2.0-arm64.dmg"],
+  ["macos-14/Beekeeper Studio-6.2.0-arm64-mac.zip", "Beekeeper-Studio-6.2.0-arm64-mac.zip"],
+  ["macos-15-intel/Beekeeper Studio-6.2.0.dmg", "Beekeeper-Studio-6.2.0.dmg"],
+  ["macos-15-intel/Beekeeper Studio-6.2.0-mac.zip", "Beekeeper-Studio-6.2.0-mac.zip"],
+  ["windows-2022/Beekeeper Studio Setup 6.2.0.exe", "Beekeeper-Studio-Setup-6.2.0.exe"],
+  ["windows-2022/Beekeeper Studio-6.2.0-portable.exe", "Beekeeper-Studio-6.2.0-portable.exe"],
+  ["ubuntu-22.04/Beekeeper Studio-6.2.0.AppImage", "Beekeeper-Studio-6.2.0.AppImage"],
+  ["ubuntu-22.04/beekeeper-studio_6.2.0_amd64.deb", "beekeeper-studio_6.2.0_amd64.deb"],
+  ["ubuntu-22.04/beekeeper-studio-6.2.0.x86_64.rpm", "beekeeper-studio-6.2.0.x86_64.rpm"],
+  ["ubuntu-22.04/beekeeper-studio_6.2.0_amd64.snap", "beekeeper-studio_6.2.0_amd64.snap"],
+  ["ubuntu-22.04/Beekeeper Studio-6.2.0-x86_64.flatpak", "Beekeeper-Studio-6.2.0-x86_64.flatpak"],
+  ["ubuntu-22.04/beekeeper-studio-6.2.0.pacman", "beekeeper-studio-6.2.0.pacman"],
+  ["ubuntu-22.04-arm/Beekeeper Studio-6.2.0-arm64.AppImage", "Beekeeper-Studio-6.2.0-arm64.AppImage"],
+  ["ubuntu-22.04-arm/beekeeper-studio_6.2.0_arm64.deb", "beekeeper-studio_6.2.0_arm64.deb"],
+  ["ubuntu-22.04-arm/beekeeper-studio-6.2.0.aarch64.rpm", "beekeeper-studio-6.2.0.aarch64.rpm"],
+  ["ubuntu-22.04-arm/beekeeper-studio_6.2.0_arm64.snap", "beekeeper-studio_6.2.0_arm64.snap"],
+  ["ubuntu-22.04-arm/Beekeeper Studio-6.2.0-aarch64.flatpak", "Beekeeper-Studio-6.2.0-aarch64.flatpak"],
+  ["ubuntu-22.04-arm/beekeeper-studio-6.2.0-aarch64.pacman", "beekeeper-studio-6.2.0-aarch64.pacman"],
+]
+const PRODUCTION_ASSETS = BUILD_OUTPUTS.map(([, name]) => name)
+const NONPROD_ASSETS = PRODUCTION_ASSETS.map((name) => `nonprod-${name}`)
+// electron-updater metadata from the same builds; never uploaded.
+const BUILD_METADATA = [
+  "macos-14/latest-mac.yml",
+  "macos-14/builder-debug.yml",
+  "macos-15-intel/latest-mac.yml",
+  "windows-2022/latest.yml",
+  "ubuntu-22.04/latest-linux.yml",
+  "ubuntu-22.04-arm/latest-linux-arm64.yml",
+]
+
 function touch(dir: string, name: string, content = name) {
   fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true })
   fs.writeFileSync(path.join(dir, name), content)
@@ -78,23 +114,17 @@ describe("non-production release assets", () => {
   })
 
   describe("release-published.yml prune step", () => {
-    it("deletes only non-production packages from a download directory", () => {
-      touch(dir, "beekeeper-studio_6.2.0_amd64.deb")
-      touch(dir, "beekeeper-studio-6.2.0.x86_64.rpm")
-      touch(dir, "beekeeper-studio_6.2.0_arm64.snap")
-      touch(dir, "nonprod-beekeeper-studio_6.2.0_amd64.deb")
-      touch(dir, "nonprod-beekeeper-studio-6.2.0.x86_64.rpm")
+    it("deletes every non-production format and keeps every production one", () => {
+      // Every format, not just the *.deb/*.rpm/*.snap the workflow downloads,
+      // so a widened --pattern cannot let one through.
+      for (const name of [...PRODUCTION_ASSETS, ...NONPROD_ASSETS]) touch(dir, name)
       touch(dir, "nested/nonprod-beekeeper-studio_6.2.0_arm64.snap")
 
       // Runs the exact command the workflow runs.
       execFileSync("node", [path.join(scriptsDir, "nonprod_assets.js"), "prune", dir])
 
-      const left = fs.readdirSync(dir, { recursive: true }).filter((f: string) => !fs.statSync(path.join(dir, f)).isDirectory())
-      expect(left.sort()).toEqual([
-        "beekeeper-studio-6.2.0.x86_64.rpm",
-        "beekeeper-studio_6.2.0_amd64.deb",
-        "beekeeper-studio_6.2.0_arm64.snap",
-      ])
+      const left = (fs.readdirSync(dir, { recursive: true }) as string[]).filter((f) => !fs.statSync(path.join(dir, f)).isDirectory())
+      expect(left.sort()).toEqual([...PRODUCTION_ASSETS].sort())
     })
 
     it("returns what it pruned", () => {
@@ -104,17 +134,9 @@ describe("non-production release assets", () => {
   })
 
   describe("mirror_release_downloads.js", () => {
-    it("never mirrors or lists non-production assets", () => {
-      const assets = [
-        { name: "Beekeeper-Studio-6.2.0.dmg" },
-        { name: "nonprod-Beekeeper-Studio-6.2.0.dmg" },
-        { name: "Beekeeper-Studio-Setup-6.2.0.exe" },
-        { name: "nonprod-Beekeeper-Studio-Setup-6.2.0.exe" },
-      ]
-      expect(mirroredAssets(assets).map((a) => a.name)).toEqual([
-        "Beekeeper-Studio-6.2.0.dmg",
-        "Beekeeper-Studio-Setup-6.2.0.exe",
-      ])
+    it("never mirrors or lists a non-production asset of any format", () => {
+      const assets = [...PRODUCTION_ASSETS, ...NONPROD_ASSETS, "latest-mac.yml"].map((name) => ({ name }))
+      expect(mirroredAssets(assets).map((a) => a.name)).toEqual([...PRODUCTION_ASSETS, "latest-mac.yml"])
     })
   })
 
@@ -143,6 +165,14 @@ describe("non-production release assets", () => {
       const { github, uploaded } = fakeGithub({ releases: [{ id: 1, tag_name: "v6.2.0", draft: false }] })
       await uploadNonProdAssets({ github, context, core }, { dir, version: "6.2.0" })
       expect(uploaded).toEqual([])
+    })
+
+    it("uploads every build format under its production name with the nonprod- marker", async () => {
+      for (const [file] of BUILD_OUTPUTS) touch(dir, file)
+      for (const file of BUILD_METADATA) touch(dir, file)
+      const { github, uploaded } = fakeGithub({ releases: [{ id: 7, tag_name: "v6.2.0", draft: true }] })
+      await uploadNonProdAssets({ github, context, core }, { dir, version: "6.2.0" })
+      expect(uploaded.map((u) => u.name).sort()).toEqual([...NONPROD_ASSETS].sort())
     })
 
     it("creates the draft release when it does not exist yet", async () => {

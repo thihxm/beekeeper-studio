@@ -20,14 +20,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A master push that changes the app version is a release commit: it builds
+  # every target studio-publish.yml ships (macOS x64 included, on the free
+  # macos-15-intel runner) so each can be tested from the draft release.
+  # Pull requests and other master pushes keep the lighter build.
+  plan:
+    runs-on: ubuntu-22.04
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Detect release commit
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          release=false
+          if [ "$EVENT" = push ] && [ "$REF" = refs/heads/master ]; then
+            version=$(node -p "require('./apps/studio/package.json').version")
+            previous=$(git show HEAD^:apps/studio/package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+            echo "version: $previous -> $version"
+            if [ "$version" != "$previous" ]; then release=true; fi
+          fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
   masterbuild:
     runs-on: ${{ matrix.os }}
+    needs: plan
 
     strategy:
       matrix:
-        os: [macos-14, ubuntu-22.04, windows-2022, ubuntu-22.04-arm]
+        os: ${{ fromJSON(needs.plan.outputs.release == 'true' && '["macos-14", "macos-15-intel", "ubuntu-22.04", "windows-2022", "ubuntu-22.04-arm"]' || '["macos-14", "ubuntu-22.04", "windows-2022", "ubuntu-22.04-arm"]') }}
 
     steps:
+      # core24 snaps build in LXD; only release builds produce snaps.
+      - name: setup LXD
+        uses: canonical/setup-lxd@main
+        if: needs.plan.outputs.release == 'true' && contains(matrix.os, 'ubuntu')
+
       - name: Check out Git repository
         uses: actions/checkout@v5
 
@@ -46,10 +81,7 @@ jobs:
 
       - name: Install flatpak tools
         if: "contains(matrix.os, 'ubuntu')"
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder rpm
-          flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+        run: bash ./.github/scripts/install-build-deps.sh
 
       - name: Install ODBC build dependencies (linux)
         if: "contains(matrix.os, 'ubuntu')"
@@ -65,13 +97,17 @@ jobs:
 
       - name: Install python 3.11 (mac)
         if: "startsWith(matrix.os, 'macos')"
+        id: mac_python
         run: |
-          # Install Python 3.11
+          # The Intel image ships python 3.11 links that block brew's (same
+          # cleanup as studio-publish.yml).
+          rm -f /usr/local/bin/2to3-3.11 /usr/local/bin/idle3.11 /usr/local/bin/pydoc3.11 \
+            /usr/local/bin/python3.11 /usr/local/bin/python3.11-config
           brew install python@3.11
-          # Add Python 3.11 to PATH
-          echo "/opt/homebrew/opt/python@3.11/libexec/bin" >> $GITHUB_PATH
-          export PATH="/opt/homebrew/opt/python@3.11/libexec/bin:$PATH"
-          export PYTHON_PATH="/opt/homebrew/opt/python@3.11/libexec/bin/python3"
+          # /opt/homebrew on arm64, /usr/local on Intel
+          PYTHON_BIN="$(brew --prefix python@3.11)/libexec/bin"
+          echo "$PYTHON_BIN" >> $GITHUB_PATH
+          echo "python_path=$PYTHON_BIN/python3" >> $GITHUB_OUTPUT
 
       - name: Verify Python Version
         if: "startsWith(matrix.os, 'windows')"
@@ -145,18 +181,19 @@ jobs:
         run: "yarn run electron:build --publish never"
         if: startsWith(matrix.os, 'ubuntu') == false
         env:
-          PYTHON_PATH: "${{ startsWith(matrix.os, 'macos') && '/opt/homebrew/opt/python@3.11/libexec/bin/python3' || '$PYTHON_PATH' }}"
-          PYTHONPATH: "${{ startsWith(matrix.os, 'macos') && '/opt/homebrew/opt/python@3.11/libexec/bin/python3' || '$PYTHONPATH' }}"
+          PYTHON_PATH: "${{ startsWith(matrix.os, 'macos') && steps.mac_python.outputs.python_path || '$PYTHON_PATH' }}"
+          PYTHONPATH: "${{ startsWith(matrix.os, 'macos') && steps.mac_python.outputs.python_path || '$PYTHONPATH' }}"
           SNAPCRAFT_BUILD_ENVIRONMENT: 'lxd'
           USE_SYSTEM_FPM: true
 
-        # Build deb for hardlinks testing
+        # Release builds produce every Linux target in electron-builder-config.js;
+        # other runs only build the deb for hardlinks testing.
       - name: Build Electron app
-        run: yarn run electron:build --publish never --linux deb
+        run: yarn run electron:build --publish never ${{ needs.plan.outputs.release == 'true' && '--linux' || '--linux deb' }}
         if: startsWith(matrix.os, 'ubuntu')
         env:
-          PYTHON_PATH: "${{ startsWith(matrix.os, 'macos') && '/opt/homebrew/opt/python@3.11/libexec/bin/python3' || '$PYTHON_PATH' }}"
-          PYTHONPATH: "${{ startsWith(matrix.os, 'macos') && '/opt/homebrew/opt/python@3.11/libexec/bin/python3' || '$PYTHONPATH' }}"
+          PYTHON_PATH: "${{ startsWith(matrix.os, 'macos') && steps.mac_python.outputs.python_path || '$PYTHON_PATH' }}"
+          PYTHONPATH: "${{ startsWith(matrix.os, 'macos') && steps.mac_python.outputs.python_path || '$PYTHONPATH' }}"
           SNAPCRAFT_BUILD_ENVIRONMENT: 'lxd'
           USE_SYSTEM_FPM: true
 
@@ -171,6 +208,9 @@ jobs:
             apps/studio/dist_electron/*.AppImage
             apps/studio/dist_electron/*.dmg
             apps/studio/dist_electron/*.snap
+            apps/studio/dist_electron/*.flatpak
+            apps/studio/dist_electron/*.pacman
+            apps/studio/dist_electron/*.zip
             apps/studio/dist_electron/*.yml
 
   test-deb-hardlinks:
@@ -218,16 +258,15 @@ jobs:
           echo "✓ DEB package successfully installs on separate filesystems"
           echo "✓ No hardlinks regression detected"
 
-  # Attach the builds to the draft release of the version they were built from,
-  # so they can be downloaded from the release page instead of the run's
+  # Attach a release commit's builds to the draft release of its version, so
+  # they can be downloaded from the release page instead of the run's
   # artifacts. Assets are named nonprod-*, never touch the signed production
   # assets, and release-published.yml keeps them out of every user channel.
-  # Plain master pushes that are not a release commit are a no-op.
   publish-release-assets:
     name: Attach builds to the draft release
     runs-on: ubuntu-22.04
-    needs: [masterbuild, test-deb-hardlinks]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [plan, masterbuild, test-deb-hardlinks]
+    if: needs.plan.outputs.release == 'true'
     permissions:
       contents: write
 
