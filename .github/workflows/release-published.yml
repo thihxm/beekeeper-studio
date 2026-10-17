@@ -78,8 +78,46 @@ jobs:
         id: extract_channel
         run: bash ./.github/scripts/extract_channel.sh "${TAG#v}"
 
+  # The R2 bucket, apt/rpm repos and snap store accounts are configured only
+  # where they exist. A repository without them (a fork) skips those publish
+  # jobs; each skip shows as a warning on this job.
+  check_credentials:
+    runs-on: ubuntu-24.04
+    outputs:
+      r2: ${{ steps.r2.outputs.available }}
+      repositories: ${{ steps.repositories.outputs.available }}
+      snap: ${{ steps.snap.outputs.available }}
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+      - name: Downloads mirror
+        id: r2
+        run: >
+          bash ./.github/scripts/check_credentials.sh "the downloads mirror"
+          cloudflare_endpoint cloudflare_key_id cloudflare_secret_access_key
+        env:
+          cloudflare_endpoint: ${{ secrets.cloudflare_endpoint }}
+          cloudflare_key_id: ${{ secrets.cloudflare_key_id }}
+          cloudflare_secret_access_key: ${{ secrets.cloudflare_secret_access_key }}
+      - name: deb/rpm repositories
+        id: repositories
+        run: >
+          bash ./.github/scripts/check_credentials.sh "deb/rpm repository publishing"
+          gpg_key cloudflare_endpoint cloudflare_key_id cloudflare_secret_access_key
+        env:
+          gpg_key: ${{ secrets.gpg_key }}
+          cloudflare_endpoint: ${{ secrets.cloudflare_endpoint }}
+          cloudflare_key_id: ${{ secrets.cloudflare_key_id }}
+          cloudflare_secret_access_key: ${{ secrets.cloudflare_secret_access_key }}
+      - name: Snap store
+        id: snap
+        run: bash ./.github/scripts/check_credentials.sh "the snap store upload" snapcraft_token
+        env:
+          snapcraft_token: ${{ secrets.snapcraft_token }}
+
   mirror_downloads:
-    if: github.event_name == 'release' || inputs.mirror
+    needs: check_credentials
+    if: (github.event_name == 'release' || inputs.mirror) && needs.check_credentials.outputs.r2 == 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out Git repository
@@ -116,8 +154,8 @@ jobs:
           AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
 
   publish_repositories:
-    needs: identify_channel
-    if: (github.event_name == 'release' || inputs.repositories) && needs.identify_channel.outputs.channel == 'latest'
+    needs: [identify_channel, check_credentials]
+    if: (github.event_name == 'release' || inputs.repositories) && needs.identify_channel.outputs.channel == 'latest' && needs.check_credentials.outputs.repositories == 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out Git repository
@@ -194,8 +232,8 @@ jobs:
           AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
 
   publish_snapcraft:
-    needs: identify_channel
-    if: github.event_name == 'release' || inputs.snap
+    needs: [identify_channel, check_credentials]
+    if: (github.event_name == 'release' || inputs.snap) && needs.check_credentials.outputs.snap == 'true'
     runs-on: ubuntu-latest
     env:
       SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.snapcraft_token }}
@@ -239,11 +277,11 @@ jobs:
           snapcraft promote beekeeper-studio --from-channel "latest/edge" --to-channel "latest/stable" --yes
 
   notify_result:
-    needs: [identify_channel, mirror_downloads, publish_repositories, publish_snapcraft]
+    needs: [identify_channel, check_credentials, mirror_downloads, publish_repositories, publish_snapcraft]
     if: always()
     runs-on: ubuntu-24.04
     env:
-      RESULTS: "identify_channel:${{ needs.identify_channel.result }} mirror_downloads:${{ needs.mirror_downloads.result }} publish_repositories:${{ needs.publish_repositories.result }} publish_snapcraft:${{ needs.publish_snapcraft.result }}"
+      RESULTS: "identify_channel:${{ needs.identify_channel.result }} check_credentials:${{ needs.check_credentials.result }} mirror_downloads:${{ needs.mirror_downloads.result }} publish_repositories:${{ needs.publish_repositories.result }} publish_snapcraft:${{ needs.publish_snapcraft.result }}"
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v5
