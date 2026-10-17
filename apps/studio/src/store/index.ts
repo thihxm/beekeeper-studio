@@ -448,11 +448,11 @@ const store = new Vuex.Store<State>({
       Vue.set(table, 'columns', columns)
     },
     databaseEntities(state, { database, entities }: { database: string, entities: Nullable<DatabaseEntities> }) {
-      if (entities) {
-        Vue.set(state.databaseEntities, database, entities)
-      } else {
-        Vue.delete(state.databaseEntities, database)
-      }
+      // a new object every time: watchers of the whole record (the sidebar tree)
+      // aren't notified when an existing key changes, eg from loading to loaded
+      state.databaseEntities = entities ?
+        { ...state.databaseEntities, [database]: entities } :
+        _.omit(state.databaseEntities, database)
     },
     namespaceList(state, nss: string[]) {
       state.namespaceList = nss;
