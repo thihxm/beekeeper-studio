@@ -7,6 +7,7 @@ import { TransportLicenseKey } from '@/common/transport';
 import Vue from "vue"
 import { LicenseStatus } from '@/lib/license';
 import { CloudClient } from '@/lib/cloud/CloudClient';
+import { SmartLocalStorage } from '@/common/LocalStorage';
 
 interface State {
   initialized: boolean
@@ -23,6 +24,18 @@ const log = rawLog.scope('LicenseModule')
 // hammer the license server with identical in-flight requests.
 let inflightUpdateAll: Promise<void> | null = null
 const inflightUpdates = new Map<string, Promise<void>>()
+
+/**
+ * Stamped by add/remove so the app's other windows re-read the licenses at
+ * once rather than on their next scheduled check (see init).
+ */
+export const LICENSES_CHANGED_KEY = 'licensesChangedAt'
+
+function announceLicensesChanged() {
+  SmartLocalStorage.addItem(LICENSES_CHANGED_KEY, Date.now())
+}
+
+let stopWatchingOtherWindows: (() => void) | null = null
 
 const defaultStatus = new LicenseStatus()
 
@@ -72,6 +85,14 @@ export const LicenseModule: Module<State, RootState>  = {
         return
       }
       await context.dispatch('sync')
+      // A license entered or removed in another window of the app takes
+      // effect here too, without waiting for the next scheduled check.
+      if (typeof window !== 'undefined') {
+        stopWatchingOtherWindows?.()
+        stopWatchingOtherWindows = SmartLocalStorage.onChange(LICENSES_CHANGED_KEY, () => {
+          context.dispatch('sync')
+        })
+      }
       const installationId = await Vue.prototype.$util.send('license/getInstallationId');
       context.commit('installationId', installationId)
       context.commit('setInitialized', true)
@@ -97,6 +118,7 @@ export const LicenseModule: Module<State, RootState>  = {
       license.maxAllowedAppRelease = result.maxAllowedAppRelease;
       license.licenseType = result.licenseType;
       await Vue.prototype.$util.send('appdb/license/save', { obj: license });
+      announceLicensesChanged()
       await context.dispatch('sync')
     },
     async update(_context, license: TransportLicenseKey) {
@@ -180,6 +202,7 @@ export const LicenseModule: Module<State, RootState>  = {
     },
     async remove(context, license) {
       await Vue.prototype.$util.send('license/remove', { id: license.id })
+      announceLicensesChanged()
       await context.dispatch('sync')
     },
     async sync(context) {
