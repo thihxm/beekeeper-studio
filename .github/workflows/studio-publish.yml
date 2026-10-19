@@ -43,9 +43,47 @@ jobs:
         id: extract_channel
         run: bash ./.github/scripts/extract_channel.sh
 
+  # Signing and CDN secrets are configured only where those accounts exist. A
+  # repository without them (a fork) still builds and publishes to its own
+  # draft release, unsigned; each skipped step shows as a warning on this job.
+  check_credentials:
+    runs-on: "ubuntu-22.04"
+    outputs:
+      mac_signing: ${{ steps.mac_signing.outputs.available }}
+      win_signing: ${{ steps.win_signing.outputs.available }}
+      cloudfront: ${{ steps.cloudfront.outputs.available }}
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+      - name: macOS code signing
+        id: mac_signing
+        run: bash ./.github/scripts/check_credentials.sh "macOS code signing and notarization" mac_dev
+        env:
+          mac_dev: ${{ secrets.mac_dev }}
+      - name: Windows code signing
+        id: win_signing
+        run: >
+          bash ./.github/scripts/check_credentials.sh "Windows code signing"
+          gcp_workload_identity_provider gcp_service_account gcp_kms_keyring gcp_kms_key win_codesign_cert
+        env:
+          gcp_workload_identity_provider: ${{ secrets.gcp_workload_identity_provider }}
+          gcp_service_account: ${{ secrets.gcp_service_account }}
+          gcp_kms_keyring: ${{ secrets.gcp_kms_keyring }}
+          gcp_kms_key: ${{ secrets.gcp_kms_key }}
+          win_codesign_cert: ${{ secrets.win_codesign_cert }}
+      - name: CloudFront invalidation
+        id: cloudfront
+        run: >
+          bash ./.github/scripts/check_credentials.sh "CloudFront cache invalidation"
+          aws_access_key_id aws_secret_access_key cloudfront_distribution
+        env:
+          aws_access_key_id: ${{ secrets.aws_access_key_id }}
+          aws_secret_access_key: ${{ secrets.aws_secret_access_key }}
+          cloudfront_distribution: ${{ secrets.cloudfront_distribution }}
+
   release:
     runs-on: ${{ matrix.os.name }}
-    needs: [create_draft_release, identify_channel]
+    needs: [create_draft_release, identify_channel, check_credentials]
     env:
       # node-gyp uses Python to build native modules from source.
       PYTHON_VERSION: '3.12'
@@ -83,7 +121,9 @@ jobs:
             type: linux
             setup_ruby: true
             setup_flatpak: true
-          - name: macos-15-large
+          # Larger runners are billed separately; a repository without them sets
+          # the MACOS_X64_RUNNER variable to a standard Intel runner.
+          - name: ${{ vars.MACOS_X64_RUNNER || 'macos-15-large' }}
             arch: x64
             type: macos
             update_yml: latest-mac.yml
@@ -141,7 +181,7 @@ jobs:
           "JSIGN_JAR=$jar" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Decode Windows code signing certificate
-        if: matrix.os.type == 'windows'
+        if: matrix.os.type == 'windows' && needs.check_credentials.outputs.win_signing == 'true'
         shell: powershell
         env:
           WIN_CODESIGN_CERT: ${{ secrets.win_codesign_cert }}
@@ -161,8 +201,8 @@ jobs:
 
       - name: Update repository
         env:
-          OWNER: 'beekeeper-studio'
-          REPO: 'beekeeper-studio'
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
         uses: actions/github-script@v8
         with:
           script: |
@@ -254,25 +294,28 @@ jobs:
         run: Remove-Item dist_electron -Recurse -ErrorAction Ignore
 
       - name: Prepare for app notarization
-        if: matrix.os.type == 'macos'
+        if: matrix.os.type == 'macos' && needs.check_credentials.outputs.mac_signing == 'true'
         # Import Apple API key for app notarization on macOS
         run: |
           mkdir -p ~/private_keys/
           echo '${{ secrets.apple_key }}' > ~/private_keys/AuthKey_${{ secrets.apple_key_id }}.p8
 
+      # CSC_LINK is exported only here: electron-builder treats any CSC_LINK,
+      # even an empty one, as a certificate to import.
       - name: Decode macOS signing certificate
-        if: matrix.os.type == 'macos'
+        if: matrix.os.type == 'macos' && needs.check_credentials.outputs.mac_signing == 'true'
         env:
           DATA: ${{ secrets.mac_dev }}
         run: |
           echo "$DATA" | base64 --decode > ~/mac-certificate.p12
+          echo "CSC_LINK=$HOME/mac-certificate.p12" >> "$GITHUB_ENV"
 
       # Authenticate just before signing so the access token (1h lifetime) is
       # fresh. token_format: access_token outputs the token jsign uses as its
       # KMS store password, so no gcloud token minting is needed in sign.js.
       - name: Authenticate to Google Cloud
         id: auth
-        if: matrix.os.type == 'windows'
+        if: matrix.os.type == 'windows' && needs.check_credentials.outputs.win_signing == 'true'
         uses: google-github-actions/auth@v3
         with:
           token_format: access_token
@@ -302,7 +345,8 @@ jobs:
           APPLE_ID_PASSWORD: ${{ secrets.apple_id_password }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.apple_id_password }}
           APPLE_TEAM_ID: "7KK583U8H2"
-          CSC_LINK: "~/mac-certificate.p12"
+          # Unsigned without a certificate: skips the keychain identity search.
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ needs.check_credentials.outputs.mac_signing == 'true' }}
           CSC_KEY_PASSWORD: ${{ secrets.mac_dev_pw }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_SYSTEM_FPM: true
@@ -326,7 +370,7 @@ jobs:
             await script({ github, core, context }, assetsUrl, channel, process.env.ASSET_NAME)
 
       - name: Invalidate cloudfront cache
-        if: matrix.os.type == 'linux' && needs.identify_channel.outputs.channel == 'latest'
+        if: matrix.os.type == 'linux' && needs.identify_channel.outputs.channel == 'latest' && needs.check_credentials.outputs.cloudfront == 'true'
         run: |
           aws cloudfront create-invalidation \
           --distribution "$DISTRIBUTION" \
@@ -429,8 +473,8 @@ jobs:
 
             // Upload the asset using the release ID
             await github.rest.repos.uploadReleaseAsset({
-              owner: 'beekeeper-studio',
-              repo: 'beekeeper-studio',
+              owner: context.repo.owner,
+              repo: context.repo.repo,
               release_id: releaseId,
               name: process.env.FILE,
               data: ymlContent,

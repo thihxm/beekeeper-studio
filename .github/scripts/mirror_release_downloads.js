@@ -14,6 +14,7 @@
  *
  * Required env:
  *   GH_TOKEN         - GitHub token for release reads
+ *   GITHUB_REPOSITORY - owner/repo the release lives in (set by Actions)
  *   R2_BUCKET        - target bucket name
  *   R2_ENDPOINT      - S3-compatible endpoint URL
  *   PUBLIC_BASE_URL  - public origin serving the bucket (custom domain)
@@ -28,8 +29,6 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { isNonProdAsset } = require('./nonprod_assets.js')
-
-const REPO = 'beekeeper-studio/beekeeper-studio'
 
 // Run a command, streaming its output to the log.
 function run(cmd, args) {
@@ -84,14 +83,14 @@ function main() {
     console.error('usage: mirror_release_downloads.js <tag>')
     process.exit(1)
   }
-  for (const name of ['GH_TOKEN', 'R2_BUCKET', 'R2_ENDPOINT', 'PUBLIC_BASE_URL', 'LATEST_TAG']) {
+  for (const name of ['GH_TOKEN', 'GITHUB_REPOSITORY', 'R2_BUCKET', 'R2_ENDPOINT', 'PUBLIC_BASE_URL', 'LATEST_TAG']) {
     if (!process.env[name]) {
       console.error(`missing required env: ${name}`)
       process.exit(1)
     }
   }
 
-  const { R2_BUCKET, PUBLIC_BASE_URL } = process.env
+  const { GITHUB_REPOSITORY: REPO, R2_BUCKET, PUBLIC_BASE_URL } = process.env
   const prefix = `releases/${tag}`
 
   const release = JSON.parse(capture('gh', [
