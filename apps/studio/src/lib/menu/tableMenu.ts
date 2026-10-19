@@ -104,13 +104,25 @@ export const commonColumnMenu = [
   resizeAllColumnsToFixedWidth,
 ];
 
-export function createMenuItem(label: string, shortcut: string | string[] = "") {
+export interface MenuItemOptions {
+  /** Material icon name rendered on the leading edge, before the label. */
+  icon?: string;
+}
+
+export function createMenuItem(
+  label: string,
+  shortcut: string | string[] = "",
+  options: MenuItemOptions = {}
+) {
   label = `<x-label>${escapeHtml(label)}</x-label>`;
   if (typeof shortcut !== "string") {
     shortcut = shortcut[0];
   }
   if (shortcut) shortcut = `<x-shortcut value="${escapeHtml(shortcut)}" />`;
-  return `<x-menuitem>${label}${shortcut}</x-menuitem>`;
+  const leadingIcon = options.icon
+    ? `<i class="material-icons leading-icon">${escapeHtml(options.icon)}</i>`
+    : '';
+  return `<x-menuitem>${leadingIcon}${label}${shortcut}</x-menuitem>`;
 }
 
 export async function buildCopyText(
