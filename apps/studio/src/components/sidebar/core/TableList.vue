@@ -194,6 +194,7 @@
   import VirtualTableList from './table_list/VirtualTableList.vue'
   import { TableOrView, Routine } from "@/lib/db/models";
   import { matches } from '@/common/transport/TransportPinnedEntity'
+  import { entityFilter } from '@/lib/db/sql_tools'
 
   export default {
     mixins: [TableFilter, TableListContextMenus],
@@ -215,7 +216,7 @@
     computed: {
       ...mapGetters(['filteredTables', 'filteredRoutines', 'dialectData', 'dialect']),
       ...mapState({currentDatabase: 'database', 'usedConfig': 'usedConfig'}),
-      ...mapState(['selectedSidebarItem', 'tables', 'routines', 'database', 'tablesLoading', 'supportedFeatures', 'connectionType']),
+      ...mapState(['selectedSidebarItem', 'tables', 'routines', 'database', 'tablesLoading', 'supportedFeatures', 'connectionType', 'databaseEntities', 'entityFilter']),
       ...mapGetters({
           pinnedEntities: 'pins/pinnedEntities',
           orderedPins: 'pins/orderedPins',
@@ -232,11 +233,19 @@
 
         return 'New Table'
       },
+      /** entities of the non-default databases loaded in the tree */
+      otherLoadedEntities() {
+        return Object.entries(this.databaseEntities ?? {})
+          .filter(([name, loaded]: [string, any]) => name !== this.database && loaded.status === 'loaded')
+          .map(([, loaded]: [string, any]) => [...loaded.tables, ...loaded.routines])
+      },
       totalEntities() {
-        return this.tables.length + this.routines.length - this.hiddenEntities.length
+        const others = _.sumBy(this.otherLoadedEntities, 'length')
+        return this.tables.length + this.routines.length - this.hiddenEntities.length + others
       },
       shownEntities() {
-        return this.filteredTables.length + this.filteredRoutines.length
+        const others = _.sumBy(this.otherLoadedEntities, (entities) => entityFilter(entities, this.entityFilter).length)
+        return this.filteredTables.length + this.filteredRoutines.length + others
       },
       totalFilteredEntities() {
         return this.totalEntities - this.shownEntities

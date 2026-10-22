@@ -75,6 +75,8 @@ interface BaseItem {
   level: number;
   parent?: BaseItem;
   pinned: boolean;
+  /** a database or schema with an entity under it that passes the filter */
+  hasMatch?: boolean;
 }
 
 interface RootItem extends BaseItem {
@@ -253,6 +255,15 @@ export default Vue.extend({
         }
       }
 
+      for (const item of items) {
+        if (item.type !== "table" && item.type !== "routine") continue;
+        const ancestors: BaseItem[] = [];
+        for (let parent = item.parent; parent; parent = parent.parent) ancestors.push(parent);
+        // a hidden entity, or one under a hidden schema, is not a match the user can see
+        if (item.hidden || ancestors.some((a) => a.hidden)) continue;
+        for (const ancestor of ancestors) ancestor.hasMatch = true;
+      }
+
       this.items = items;
       this.generated = true;
     },
@@ -271,9 +282,17 @@ export default Vue.extend({
     },
     isVisible(item: Item) {
       for (let parent = item.parent; parent; parent = parent.parent) {
-        if (parent.hidden || !parent.expanded) return false;
+        if (parent.hidden || !(parent.expanded || this.openedByFilter(parent))) return false;
       }
       return true;
+    },
+    /** While filtering, nodes with a match show open without touching what the user expanded */
+    openedByFilter(item: BaseItem) {
+      return this.filtering && (item.type === "database" || item.type === "schema") && !!item.hasMatch;
+    },
+    /** While filtering, a loaded database with no match is left out */
+    filteredOut(item: Item) {
+      return this.filtering && item.type === "database" && !item.isDefault && item.status === "loaded" && !item.hasMatch;
     },
     loadDatabase(item: DatabaseItem, force = false) {
       if (item.isDefault || item.locked) return;
@@ -320,7 +339,7 @@ export default Vue.extend({
           continue;
         }
 
-        if (!item.hidden && this.isVisible(item)) {
+        if (!item.hidden && !this.filteredOut(item) && this.isVisible(item)) {
           displayItems.push(item);
 
           // Summarizing the total height of all list items to get the average height
@@ -447,6 +466,9 @@ export default Vue.extend({
         { event: AppEvent.revealSidebarItem, handler: this.revealItem },
       ];
     },
+    filtering() {
+      return !!this.entityFilter?.filterQuery;
+    },
     multipleDatabases() {
       return !this.dialectData?.disabledFeatures?.multipleDatabases && this.databaseList.length > 0;
     },
@@ -457,6 +479,7 @@ export default Vue.extend({
         this.databaseList,
         this.database,
         this.databaseEntities,
+        this.entityFilter.filterQuery,
         this.inaccessibleDatabases,
         // the colorFor getter returns the same function as labels change; watch the labels themselves
         this.databaseLabelRecords,

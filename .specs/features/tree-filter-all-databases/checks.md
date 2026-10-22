@@ -15,25 +15,25 @@ names are not substrings of each other except where a check needs it.
 
 ### S1 - filter results from every loaded database are visible · 3 files · 33 KB · ~8k
 
-**C1** - With filter `use`, `users` of the default database `a` and `users` of the loaded database `b` are both displayed while `b`'s database node is collapsed, and `log` in `a`'s collapsed `audit` schema is displayed with filter `lo` (AC 1)
+**C1** - With filter `use`, `users` of the default database `a` and `users` of the loaded database `b` are both displayed while `b`'s database node is collapsed, and `log` in `a`'s collapsed `audit` schema is displayed with filter `lo` (AC 1) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "shows matches under collapsed database and schema nodes"`
 
-**C2** - With filter `use`, a loaded database `c` whose only entity is `invoices` is not in `displayItems`, while `b` (which has `users`) is (AC 2)
+**C2** - With filter `use`, a loaded database `c` whose only entity is `invoices` is not in `displayItems`, while `b` (which has `users`) is (AC 2) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "hides loaded databases without a match"`
 
-**C3** - With filter `use`, a database node in each of the 4 states `idle`, `loading`, `error` and locked is in `displayItems`, with `expanded` false and no child item displayed. The test is table-driven over the 4 (AC 3)
+**C3** - With filter `use`, a database node in each of the 4 states `idle`, `loading`, `error` and locked is in `displayItems`, with `expanded` false and no child item displayed. The test is table-driven over the 4 (AC 3) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "keeps unloaded database nodes collapsed"`
 
-**C4** - With filter `eve` already set and `b` never expanded, committing `b` as `loaded` with `events` puts `events` (database `b`) in `displayItems` without calling `handleExpand` (AC 4)
+**C4** - With filter `eve` already set and `b` never expanded, committing `b` as `loaded` with `events` puts `events` (database `b`) in `displayItems` without calling `handleExpand` (AC 4) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "shows matches of a database that loads during the filter"`
 
-**C5** - After filter `use` is cleared, `b` is collapsed again and its `users` is not displayed; and when `b` was clicked open (`handleExpand`) during the filter, it stays open after the filter is cleared (AC 5)
+**C5** - After filter `use` is cleared, `b` is collapsed again and its `users` is not displayed; and when `b` was clicked open (`handleExpand`) during the filter, it stays open after the filter is cleared (AC 5) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "restores the user's expansion when the filter is cleared"`
 
-**C6** - With filter `use`, `a` holding `users`, `orders`, `log` and loaded `b` holding `users`, `events`, plus `c` in `loading`, the `Entities` badge reads `2 / 5`; with one hidden entity in `a` it reads `2 / 4` (AC 6)
+**C6** - With filter `use`, `a` holding `users`, `orders`, `log` and loaded `b` holding `users`, `events`, plus `c` in `loading`, the `Entities` badge reads `2 / 5`; with one hidden entity in `a` it reads `2 / 4` (AC 6) ✅
 Proof: `VU tests/vitest/unit/components/TableListFilterBadge.spec.ts -t "badge sums the default and loaded databases"`
 
-**C7** - Where `disabledFeatures.multipleDatabases` is set, filter `use` displays no database item and displays `users` of the default entity list only (AC 7)
+**C7** - Where `disabledFeatures.multipleDatabases` is set, filter `use` displays no database item and displays `users` of the default entity list only (AC 7) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "single-database dialects filter as before"`
 
 ## Coverage
