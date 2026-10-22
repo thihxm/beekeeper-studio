@@ -21,7 +21,7 @@ Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "shows
 **C2** - With filter `use`, a loaded database `c` whose only entity is `invoices` is not in `displayItems`, while `b` (which has `users`) is (AC 2) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "hides loaded databases without a match"`
 
-**C3** - With filter `use`, a database node in each of the 4 states `idle`, `loading`, `error` and locked is in `displayItems`, with `expanded` false and no child item displayed. The test is table-driven over the 4 (AC 3) ✅
+**C3** - With filter `use`, a database node in each of the 4 states `idle`, `loading`, `error` and locked is in `displayItems`, with `expanded` false, drawn closed (`isOpen` false), and no child item displayed. The test is table-driven over the 4 (AC 3; "drawn closed" added on the connection-tree branch after its verification round 3) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "keeps unloaded database nodes collapsed"`
 
 **C4** - With filter `eve` already set and `b` never expanded, committing `b` as `loaded` with `events` puts `events` (database `b`) in `displayItems` without calling `handleExpand` (AC 4) ✅
