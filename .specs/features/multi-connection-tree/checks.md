@@ -152,16 +152,16 @@ Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "
 **C40** - For a Snowflake saved connection with MFA-code auth, expanding it calls `BeekeeperPlugin.promptSnowflakeMFAPasscode`; cancelled → no `conn/create` and the node stays `idle`; passcode `123456` → `conn/create` carries `config.snowflakeOptions.passcode === "123456"` (AC 15) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "snowflake MFA prompt cancel leaves the connection closed"`
 
-**C41** - With filter `use`, not-connected `D`, and `C`'s `audit` (idle), `secret` (locked) and `staging` (error) are each displayed, collapsed, with no child displayed (AC 20 - filter rule 3) ✅
+**C41** - With filter `use`, not-connected `D`, and `C`'s `audit` (idle), `reports` (loading), `secret` (locked) and `staging` (error) are each displayed, collapsed, with no child displayed (AC 20 - filter rule 3) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "filter keeps unloaded secondary nodes collapsed"`
 
 **C42** - With filter `use` set, committing `C`'s `audit` as loaded with `user_audit` displays `user_audit` while `audit` stays collapsed (AC 20 - filter rule 4) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "filter shows a secondary database that loads during the filter"`
 
-**C43** - After filter `use` is cleared, `C` is collapsed again and none of its tables is displayed (AC 20 - filter rule 5) ✅
+**C43** - After filter `use` is cleared, `C` is collapsed again and none of its tables is displayed; when `C` was clicked open during the filter, it stays open after the filter is cleared and shows `users` (AC 20 - filter rule 5) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "clearing the filter restores secondary expansion"`
 
-**C44** - With filter `use`, the window's `a` (3 entities) and loaded `b` (2), plus `C`'s loaded `shop` (`users`, `orders`) and loading `audit`, the badge reads `3 / 7` (AC 20 - filter rule 6) ✅
+**C44** - With filter `use`, the window's `a` (3 entities) and loaded `b` (2), plus `C`'s loaded default database `shop` (`users`, `orders`) and loading `audit`, the badge reads `3 / 7` (AC 20 - filter rule 6) ✅
 Proof: `VU tests/vitest/unit/components/TableListFilterBadge.spec.ts -t "badge counts secondary connections"`
 
 **C45** - The app database model's `OpenTab.matches` returns `false` for two `table` tabs differing only in `targetConnectionId` (`null` vs 7, both directions) and `true` when both are 7 (door 2) ✅
@@ -181,6 +181,8 @@ Proof: `VU tests/vitest/unit/common/appdb/tabTargetConnection.spec.ts -t "app da
 | secondary dialect shape (2) | multiple databases C14 · `multipleDatabases` disabled C14 | - |
 | secondary item kinds (5) | connection C14 · database C14 · locked database C39 · schema group C39 · entity C14 | - |
 | filter rules on secondary connections, `tree-filter-all-databases` AC 1-6 (6) | 1 matches shown C22 · 2 no-match hidden C22 · 3 unloaded collapsed C41 · 4 loads while filtering C42 · 5 expansion restored C43 · 6 badge C44 | - |
+| secondary database states while filtering (5) | idle C41 · loading C41 · error C41 · locked C41 · loaded C22 | - |
+| expansion sources restored on clear, secondary (2) | before the filter C43 · clicked during the filter C43 | - |
 | ephemeral prompts (2) | CockroachDB JWT C17 · Snowflake MFA C40 | - |
 | ephemeral prompt outcomes (2) | cancelled C17, C40 · value given C17, C40 | - |
 | Disconnect guard (3) | active transaction C19 · reserved connection C19 · neither C19 | - |
@@ -253,3 +255,4 @@ Size from `wc -c` on the files each slice touches, divided by 4:
 - **Settled mid-build:** tests were written with the code rather than strictly red first; the Verifier's fault injection is the guard for that. Two legacy tests faked `this` without the new `tabConnectionId` and asserted the old call arity: `tabDatabaseColumns.spec.ts` now passes `tabConnectionId: () => null` and asserts `tablesFor("b", null)` (still exact). Copy-as-SQL / copy-as-IN-list used to send `conn/*` without the tab's database either; they now go through the tab's client (`connection` option of `copyActionsMenu`), which also fixes them for non-default databases. `TablePartitions` read `this.dialect` that was never mapped; the mixin now provides it. `src/migration/index.js` exports `realMigrations` so the migration proof can find its entry without running every migration.
 - **Abandoned:** routing `query/*` through `database` like `conn/*` - the query handlers ignore it; they now go to the client's session (`sendToSession`).
 - **Settled after verification round 1:** the Verifier found the tabs' real `provide` of `tabConnectionId` unproven (a mutant survived in `TabTableProperties`), the query tab's busy and keep-alive wiring run only below the tab, the node's error/Retry not rendered in a test, AC 12 (locked databases, schema groups), AC 15 (Snowflake MFA) and AC 20 filter rules 3-6 without rows, a C8 assertion that could not fail, and `OpenTab.matches` untested. Added C39-C45 and proof lines on C13, C19, C29 and C30; the author re-ran the surviving mutant and it now fails. AC 20 rule 6 found a real gap: the badge did not count secondary connections, and `TableList` now does. C14 and C29's text were corrected to what their tests prove. No existing assertion or test was weakened.
+- **Settled after verification round 2:** round 1's gaps were closed. Three remained: the badge fixture left out the connection's `database` field the store always sets, so skipping a secondary connection's default database survived; C41 had no `loading` database; C43 did not cover a click during the filter. The fixtures and tests were strengthened (C41, C43, C44 texts now name those cases) and the author re-ran the surviving badge mutant: it now fails. No assertion was weakened and no source changed.
