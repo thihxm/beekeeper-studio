@@ -44,6 +44,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: VirtualTableList.vue:259 routine match (round 2) (apps/studio/tests/vitest)
 - last seen: 2026-10-22T03:33:24Z
 
+### L-006 - When a component draws state from a derived value (isOpen = expanded || openedByFilter), assert the derived value or the rendered markup, never only the stored flag.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `apps/studio/tests/vitest` · harmful: 0
+- features: multi-connection-tree
+- evidence: VirtualTableList.vue:426 openedByFilter vs stored expanded (round 3) (apps/studio/tests/vitest)
+- last seen: 2026-10-22T06:54:12Z
+
+### L-007 - For provide/inject wiring, run the real provider's provide above a child built on the real mixin; a test that injects the value itself proves nothing about the provider.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `apps/studio/tests/vitest` · harmful: 0
+- features: multi-connection-tree
+- evidence: TabTableProperties.vue provide tabConnectionId (round 1) (apps/studio/tests/vitest)
+- last seen: 2026-10-22T06:54:12Z
+
+### L-008 - Build store fixtures with every field the real store always sets (e.g. a connection's default database), or a mutant that branches on that field survives.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `apps/studio/tests/vitest` · harmful: 0
+- features: multi-connection-tree
+- evidence: TableListFilterBadge.spec.ts fixture without database (round 2) (apps/studio/tests/vitest)
+- last seen: 2026-10-22T06:54:12Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
