@@ -2,7 +2,7 @@
   <stateless-database-item
     v-if="source.type === 'database'"
     :name="source.entity"
-    :expanded="source.expanded"
+    :expanded="isOpen(source)"
     :is-default="source.isDefault"
     :locked="source.locked"
     :color="source.color"
@@ -24,7 +24,7 @@
     v-else-if="source.type === 'schema'"
     :level="source.level"
     v-show="!source.hidden"
-    :expanded="source.expanded"
+    :expanded="isOpen(source)"
     :schema="source.entity"
     @expand="onExpand($event, source)"
     @contextmenu.prevent.stop="
@@ -88,6 +88,6 @@ export default Vue.extend({
     StatelessRoutineListItem,
     StatelessSidebarFolder,
   },
-  props: ["source", "onExpand", "onPin", "onRetry", "lockedTitle"],
+  props: ["source", "onExpand", "onPin", "onRetry", "lockedTitle", "isOpen"],
 });
 </script>
