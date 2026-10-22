@@ -1,4 +1,4 @@
-import { Module, Store } from "vuex";
+import { ActionContext, Module, Store } from "vuex";
 import Vue from "vue";
 import _ from "lodash";
 import { State as RootState, DatabaseEntities, ConnectionContext, resolveEphemeralValues } from "../index";
@@ -84,6 +84,15 @@ function databaseKey(config: IConnection | undefined, database: string): string 
 async function closeSession(sId: string) {
   await Vue.prototype.$util.send("conn/disconnect", { sId });
   await Vue.prototype.$util.send("conn/clearConnection", { sId });
+}
+
+/** The database colors of saved connection `id`; its tree still opens without them */
+async function loadDatabaseColors(context: ActionContext<State, RootState>, id: number) {
+  try {
+    await context.dispatch("databaseLabels/loadOn", id, { root: true });
+  } catch (e) {
+    log.warn(`Loading the database colors of saved connection ${id} failed`, e);
+  }
 }
 
 function typed(tables: TableOrView[], entityType: TableOrView["entityType"]) {
@@ -282,7 +291,10 @@ export const ConnectionTreeModule: Module<State, RootState> = {
         if (!stale()) context.commit("update", { id, changes: { status: "error", error: e.message } });
         return false;
       }
-      await context.dispatch("loadDatabase", { id, database: config.defaultDatabase || null });
+      await Promise.all([
+        context.dispatch("loadDatabase", { id, database: config.defaultDatabase || null }),
+        loadDatabaseColors(context, id),
+      ]);
       return true;
     },
     /** Loads tables, views and routines of one database of secondary connection `id` */

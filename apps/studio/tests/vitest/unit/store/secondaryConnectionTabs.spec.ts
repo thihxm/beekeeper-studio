@@ -166,6 +166,14 @@ describe("tabs on a saved connection opened from the tree", () => {
     expect(state(W1).queries.size).toBe(0)
   })
 
+  it("new query on a window database opens a window tab on that database", async () => {
+    const { added, ctx } = coreTabs()
+    await coreTabsMethods.createQueryOnConnection.call(ctx, { connectionId: null, database: "b" })
+
+    expect(added.map((t) => [t.tabType, t.targetConnectionId, t.databaseName])).toEqual([["query", null, "b"]])
+    expect(received.filter((r) => r.name === "conn/create")).toHaveLength(0)
+  })
+
   it("restored tab connects its connection on first use", async () => {
     // a tab saved before the restart; nothing is open for connection 7
     const restored = { tabType: "table", targetConnectionId: 7, databaseName: "shop" } as TransportOpenTab

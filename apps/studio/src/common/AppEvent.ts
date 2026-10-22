@@ -26,11 +26,11 @@ export enum AppEvent {
   loadTable = 'loadTable',
   /** expand (and load) a database node in the sidebar tree */
   expandDatabase = 'expandDatabase',
-  /** pick the label color of a database: `trigger(AppEvent.openDatabaseColorModal, databaseName)` */
+  /** pick the label color of a database: `trigger(AppEvent.openDatabaseColorModal, databaseName)`, or `{ connectionId, database }` on a saved connection opened from the tree */
   openDatabaseColorModal = 'openDatabaseColorModal',
   /** expand and scroll the sidebar tree to an entity key (see `sidebarKeyForTab`) */
   revealSidebarItem = 'revealSidebarItem',
-  /** a query tab on a saved connection opened from the tree: `trigger(AppEvent.newQueryOnConnection, { connectionId, database })` */
+  /** a query tab on a database of a saved connection opened from the tree, or of the window's connection for a null connectionId: `trigger(AppEvent.newQueryOnConnection, { connectionId, database })` */
   newQueryOnConnection = 'newQueryOnConnection',
   loadSelectTop = 'loadSelectTop',
   quickSearch = 'quickSearch',

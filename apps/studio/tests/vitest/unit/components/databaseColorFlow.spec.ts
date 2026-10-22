@@ -38,7 +38,10 @@ describe("setting a database color from the tree", () => {
       modules: {
         databaseLabels: {
           namespaced: true,
-          getters: { colorFor: () => (db: string) => (db === "b" ? currentColor : null) },
+          getters: {
+            colorOn: () => (id: number | null, db: string) =>
+              (id == null && db === "b") || (id === 7 && db === "audit") ? currentColor : null,
+          },
           actions: { setColor },
         },
       },
@@ -77,6 +80,24 @@ describe("setting a database color from the tree", () => {
     await wrapper.find("form.color-form").trigger("submit");
 
     expect(setColor.mock.calls[0][1]).toEqual({ databaseName: "b", color: "default" });
+  });
+
+  it("the color modal saves the color of a secondary connection database for that connection", async () => {
+    const { wrapper, vm, setColor } = mountModal("red");
+
+    vm.$root.$emit(AppEvent.openDatabaseColorModal, { connectionId: 7, database: "audit" });
+    expect(vm.database).toBe("audit");
+    expect(vm.color).toBe("red");
+
+    vm.color = "orange";
+    await wrapper.find("form.color-form").trigger("submit");
+
+    expect(setColor.mock.calls[0][1]).toEqual({ connectionId: 7, databaseName: "audit", color: "orange" });
+
+    // the next window database opened afterwards saves on the window's connection again
+    vm.$root.$emit(AppEvent.openDatabaseColorModal, "b");
+    await wrapper.find("form.color-form").trigger("submit");
+    expect(setColor.mock.calls[1][1]).toEqual({ databaseName: "b", color: "red" });
   });
 
   it("the entity tree mounts the color modal", () => {
