@@ -22,6 +22,7 @@ import { TabModule } from './modules/TabModule'
 import { HideEntityModule } from './modules/HideEntityModule'
 import { DatabaseLabelModule } from './modules/DatabaseLabelModule'
 import { PinConnectionModule } from './modules/PinConnectionModule'
+import { ConnectionTreeModule, connectionTreePlugin } from './modules/ConnectionTreeModule'
 import { ElectronUtilityConnectionClient } from '@/lib/utility/ElectronUtilityConnectionClient'
 import { connectionForTab } from '@/lib/utility/tabConnection'
 import { DATABASE_ACCESS_DENIED } from '@/lib/db/accessDenied'
@@ -64,7 +65,7 @@ function shouldPromptSnowflakeMFA(config: Nullable<IConnection>) {
     config?.snowflakeOptions.authType === SnowflakeAuthType.MFACode;
 }
 
-async function resolveEphemeralValues(config: IConnection): Promise<IConnection | null> {
+export async function resolveEphemeralValues(config: IConnection): Promise<IConnection | null> {
   if (shouldPromptCockroachJwt(config)) {
     const { token, cancelled } = await BeekeeperPlugin.promptJwtToken(
       BeekeeperPlugin.buildConnectionName(config)
@@ -163,6 +164,7 @@ const store = new Vuex.Store<State>({
     databaseLabels: DatabaseLabelModule,
     userEnums: UserEnumsModule,
     pinnedConnections: PinConnectionModule,
+    connectionTree: ConnectionTreeModule,
     multiTableExports: MultiTableExportStoreModule,
     imports: ImportStoreModule,
     backups: BackupModule,
@@ -664,6 +666,7 @@ const store = new Vuex.Store<State>({
      * instead of an empty core interface.
      */
     async rollbackConnection(context) {
+      await context.dispatch('connectionTree/disconnectAll')
       try {
         await Vue.prototype.$util.send('conn/disconnect');
       } catch (ex) {
@@ -706,6 +709,8 @@ const store = new Vuex.Store<State>({
       return false;
     },
     async disconnect(context) {
+      // saved connections opened from the tree go with the window's
+      await context.dispatch('connectionTree/disconnectAll')
       if (context.state.connection) {
         try {
           await context.state.connection.disconnect();
@@ -1012,7 +1017,7 @@ const store = new Vuex.Store<State>({
       });
     },
   },
-  plugins: []
+  plugins: [connectionTreePlugin]
 })
 
 export default store

@@ -14,6 +14,7 @@ import tmp from 'tmp';
 import bksConfig from "@/common/bksConfig";
 import { databaseAccessDeniedError, isDatabaseAccessDenied } from "@/lib/db/accessDenied";
 import rawLog from "@bksLogger";
+import { childSessionKey, isChildSessionOf, parentSessionKey } from "@/common/connectionSession";
 
 const log = rawLog.scope("handlerState");
 
@@ -78,9 +79,37 @@ export function newState(id: string): void {
   states.set(id, new State());
 }
 
+export { childSessionKey };
+
+/**
+ * The State a request runs in. A child session is created on its first request
+ * while its window session exists, and replies on the window's port.
+ */
+export function sessionForRequest(sId: string): State {
+  const existing = states.get(sId);
+  if (existing) return existing;
+  const parentKey = parentSessionKey(sId);
+  const parent = parentKey ? states.get(parentKey) : undefined;
+  if (!parent) throw new Error(`No session ${sId}`);
+  newState(sId);
+  const child = states.get(sId);
+  child.port = parent.port;
+  return child;
+}
+
 export async function removeState(id: string): Promise<void> {
   const state = states.get(id);
   if (!state) return;
+  // a window takes the connections it opened with it
+  for (const key of [...states.keys()]) {
+    if (!isChildSessionOf(key, id)) continue;
+    try {
+      states.get(key).server?.end();
+    } catch (e) {
+      log.error(`Error ending the session ${key}`, e);
+    }
+    await removeState(key);
+  }
   for (const file of state.tempFiles.values()) {
     if (file.fileHandle) {
       await file.fileHandle.close().catch();

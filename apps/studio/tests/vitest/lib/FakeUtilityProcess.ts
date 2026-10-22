@@ -1,5 +1,5 @@
 import { MessageChannel, MessagePort } from "worker_threads"
-import { newState, state } from "@/handlers/handlerState"
+import { newState, sessionForRequest, state } from "@/handlers/handlerState"
 
 type Handler = (args: any) => Promise<any>
 
@@ -34,6 +34,8 @@ export class FakeUtilityProcess {
     if (!this.alive) return
     const reply: any = { id, type: "reply" }
     try {
+      // like utility.ts: a child session is created on its first request
+      if (args?.sId) sessionForRequest(args.sId)
       const handler = this.handlers[name] ?? this.fallback(name)
       reply.data = await handler(args)
     } catch (e) {
