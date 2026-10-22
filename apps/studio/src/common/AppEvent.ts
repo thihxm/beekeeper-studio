@@ -30,6 +30,8 @@ export enum AppEvent {
   openDatabaseColorModal = 'openDatabaseColorModal',
   /** expand and scroll the sidebar tree to an entity key (see `sidebarKeyForTab`) */
   revealSidebarItem = 'revealSidebarItem',
+  /** a query tab on a saved connection opened from the tree: `trigger(AppEvent.newQueryOnConnection, { connectionId, database })` */
+  newQueryOnConnection = 'newQueryOnConnection',
   loadSelectTop = 'loadSelectTop',
   quickSearch = 'quickSearch',
   promptLogin = 'cloud_signin',

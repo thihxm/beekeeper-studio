@@ -35,6 +35,8 @@ interface State {
   /** every saved connection of the window's workspace */
   savedConnections: IConnection[],
   connections: Record<number, SecondaryConnection>,
+  /** tabs with an open transaction or reserved connection, and the saved connection each runs on */
+  busyTabs: Record<number, number>,
 }
 
 const emptyConnection = (): SecondaryConnection => ({
@@ -78,6 +80,7 @@ export const ConnectionTreeModule: Module<State, RootState> = {
   state: () => ({
     savedConnections: [],
     connections: {},
+    busyTabs: {},
   }),
   getters: {
     scope(_state, _getters, _rootState, rootGetters): ConnectionTreeScope {
@@ -135,6 +138,11 @@ export const ConnectionTreeModule: Module<State, RootState> = {
       const node = state.connections[id] ?? emptyConnection();
       const databaseEntities = { ...node.databaseEntities, [database]: entities };
       state.connections = { ...state.connections, [id]: { ...node, databaseEntities } };
+    },
+    tabBusy(state, { tabId, connectionId, busy }: { tabId: number, connectionId: number | null, busy: boolean }) {
+      state.busyTabs = busy && connectionId != null ?
+        { ...state.busyTabs, [tabId]: connectionId } :
+        _.omit(state.busyTabs, tabId);
     },
     remove(state, id: number) {
       state.connections = _.omit(state.connections, id);
@@ -205,8 +213,8 @@ export const ConnectionTreeModule: Module<State, RootState> = {
             supportedFeatures,
             defaultSchema,
             database: config.defaultDatabase || null,
-            databaseList,
-            inaccessibleDatabases,
+            databaseList: databaseList ?? [],
+            inaccessibleDatabases: inaccessibleDatabases ?? [],
           },
         });
       } catch (e) {
@@ -250,6 +258,17 @@ export const ConnectionTreeModule: Module<State, RootState> = {
           context.commit("update", { id, changes: { inaccessibleDatabases: _.uniq([...context.state.connections[id].inaccessibleDatabases, key]) } });
         }
         context.commit("databaseEntities", { id, database: key, entities: { tables: [], routines: [], status: "error", error: e.message } });
+      }
+    },
+    /** Lists the databases again and reloads the loaded ones */
+    async refresh(context, id: number) {
+      const node = context.state.connections[id];
+      if (node?.status !== "connected") return;
+      const client = new ElectronUtilityConnectionClient().forConnection(sessionFor(id, false));
+      context.commit("update", { id, changes: { databaseList: await client.listDatabases() } });
+      const loaded = Object.entries(node.databaseEntities).filter(([, e]) => e.status === "loaded").map(([name]) => name);
+      for (const database of loaded) {
+        await context.dispatch("loadDatabase", { id, database: database === node.database ? null : database, force: true });
       }
     },
     /** Closes secondary connection `id`; tabs bound to it reconnect on their next call */

@@ -18,74 +18,74 @@ Names used below: window session `w1`; secondary saved connections `C` (id 7, My
 
 ### S1 - connection level in the entity tree · 6 files · 45 KB · ~11k
 
-**C1** - With `connectionTreeScope` absent and pins `[9, 7]` (positions 0, 1) for saved connections `{3, 7, 9, 11}`, the tree's connection nodes are, in order, `3` (window), `9`, `7`; `11` (not pinned) and a second `3` are absent (AC 1)
+**C1** - With `connectionTreeScope` absent and pins `[9, 7]` (positions 0, 1) for saved connections `{3, 7, 9, 11}`, the tree's connection nodes are, in order, `3` (window), `9`, `7`; `11` (not pinned) and a second `3` are absent (AC 1) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "pinned scope lists pinned connections in pin order"`
 
-**C2** - With `connectionTreeScope = "all"` and saved connections named `beta`, `Alpha`, `gamma` (ids 7, 9, 11) plus the window's own (3), the nodes after the window's are `Alpha`, `beta`, `gamma`, and the list comes from the full saved-connection source, not from `data/connections` items (which hold only `beta` in the fixture) (AC 2)
+**C2** - With `connectionTreeScope = "all"` and saved connections named `beta`, `Alpha`, `gamma` (ids 7, 9, 11) plus the window's own (3), the nodes after the window's are `Alpha`, `beta`, `gamma`, and the list comes from the full saved-connection source, not from `data/connections` items (which hold only `beta` in the fixture) (AC 2) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "all scope lists every saved connection by name"`
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "loads every saved connection of the workspace"`
 
-**C3** - With scope `pinned` and no pins, the tree has 0 connection nodes and the same item keys as before this feature (`database::a`, `database::b`, ...) (AC 3)
+**C3** - With scope `pinned` and no pins, the tree has 0 connection nodes and the same item keys as before this feature (`database::a`, `database::b`, ...) (AC 3) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "no listed connection renders no connection level"`
 
-**C4** - With one secondary connection listed, the first connection node is the window's, `expanded` true, and today's database items are its descendants (AC 4)
+**C4** - With one secondary connection listed, the first connection node is the window's, `expanded` true, and today's database items are its descendants (AC 4) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "window connection is first and expanded"`
 
-**C5** - Connection node `C` renders its name and an element with class `connection-label-color-blue`; node `D` (`labelColor: "default"`) renders its name and no `connection-label-color-*` element (AC 5)
+**C5** - Connection node `C` renders its name and an element with class `connection-label-color-blue`; node `D` (`labelColor: "default"`) renders its name and no `connection-label-color-*` element (AC 5) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "connection nodes show name and saved color"`
 
-**C6** - Choosing each of the 3 Entities-header menu items dispatches `settings/save` with `{ key: "connectionTreeScope", value }` for `off`, `pinned` and `all` respectively, and the tree rebuilds its connection level from the new value without remounting. The test is table-driven over the 3 (AC 6, door 3)
+**C6** - Choosing each of the 3 Entities-header menu items dispatches `settings/save` with `{ key: "connectionTreeScope", value }` for `off`, `pinned` and `all` respectively, and the tree rebuilds its connection level from the new value without remounting. The test is table-driven over the 3 (AC 6, door 3) ✅
 Proof: `VU tests/vitest/unit/components/connectionTreeScopeMenu.spec.ts -t "scope menu saves each value and rebuilds the tree"`
 
-**C7** - After the saved-connection list changes (a pin added, a connection renamed, recolored, created and deleted), the next rebuild shows the change and no `conn/*` message is sent under `w1` (AC 7)
+**C7** - After the saved-connection list changes (a pin added, a connection renamed, recolored, created and deleted), the next rebuild shows the change and no `conn/*` message is sent under `w1` (AC 7) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "connection level follows saved connection changes"`
 
-**C8** - With scope `all` and the window connected to an unsaved config (no `id`), plus a used-connection record for an unsaved config, only saved connections appear after the window node (AC 8)
+**C8** - With scope `all` and the window connected to an unsaved config (no `id`), plus a used-connection record for an unsaved config, only saved connections appear after the window node (AC 8) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "never lists unsaved connections"`
 
-**C9** - With `connectionTreeScope = "off"` and pins `[7, 9]`, the tree has 0 connection nodes (AC 35)
+**C9** - With `connectionTreeScope = "off"` and pins `[7, 9]`, the tree has 0 connection nodes (AC 35) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "off scope hides the connection level"`
 
 ### S2 - opening a secondary connection from the tree · 5 files · 78 KB · ~19k
 
-**C10** - The child session key for window `w1` and saved connection 7 is `w1::connection::7`; the utility, receiving a request with that `sId` while `w1` exists, creates a `State` whose `port` is `w1`'s port, and replies on it; a request for `x9::connection::7` with no `x9` session is answered with an error and creates no state (door 1)
+**C10** - The child session key for window `w1` and saved connection 7 is `w1::connection::7`; the utility, receiving a request with that `sId` while `w1` exists, creates a `State` whose `port` is `w1`'s port, and replies on it; a request for `x9::connection::7` with no `x9` session is answered with an error and creates no state (door 1) ✅
 Proof: `VU tests/vitest/unit/handlers/childSession.spec.ts -t "creates a child session that shares the window port"`
 
-**C11** - Expanding not-connected node `C` sends `conn/create` with `config.id === 7` and `sId === "w1::connection::7"` exactly once, and every message sent during the expand carries `sId` `w1::connection::7` or is an `appdb/*` lookup - none is sent under `w1` (AC 9)
+**C11** - Expanding not-connected node `C` sends `conn/create` with `config.id === 7` and `sId === "w1::connection::7"` exactly once, and every message sent during the expand carries `sId` `w1::connection::7` or is an `appdb/*` lookup - none is sent under `w1` (AC 9) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "expanding a connection creates it in its own session"`
 
-**C12** - While `conn/create` for `C` is pending, node `C` renders the loading indicator; after it resolves the indicator is gone (AC 10)
+**C12** - While `conn/create` for `C` is pending, node `C` renders the loading indicator; after it resolves the indicator is gone (AC 10) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "connecting node shows loading"`
 
-**C13** - When `conn/create` for `C` rejects with `ER_ACCESS_DENIED_ERROR: Access denied for user`, node `C` shows that message and a Retry control, retry sends `conn/create` again, and in the utility `state("w1::connection::7").server` is `null` after the failure (AC 11)
+**C13** - When `conn/create` for `C` rejects with `ER_ACCESS_DENIED_ERROR: Access denied for user`, node `C` shows that message and a Retry control, retry sends `conn/create` again, and in the utility `state("w1::connection::7").server` is `null` after the failure (AC 11) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "a failed connect shows the error and can retry"`
 Proof: `VU tests/vitest/unit/handlers/childSession.spec.ts -t "a failed create leaves the child session without a server"`
 
-**C14** - After `C` connects with `databaseList = ["audit", "shop"]` and default `shop`, the tree shows database nodes `audit` and `shop` under `C`, `shop` expanded with its tables, `audit` collapsed; for `D`'s dialect with `disabledFeatures.multipleDatabases`, `D`'s schema/table items are direct children of `D` (AC 12)
+**C14** - After `C` connects with `databaseList = ["audit", "shop"]` and default `shop`, the tree shows database nodes `audit` and `shop` under `C`, `shop` expanded with its tables, `audit` collapsed; for `D`'s dialect with `disabledFeatures.multipleDatabases`, `D`'s schema/table items are direct children of `D` (AC 12) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "connected secondary connection renders its databases"`
 
-**C15** - Expanding `C`'s `audit` sends `conn/listTables` with `sId === "w1::connection::7"` and `database === "audit"` (AC 13)
+**C15** - Expanding `C`'s `audit` sends `conn/listTables` with `sId === "w1::connection::7"` and `database === "audit"` (AC 13) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "expanding a secondary database lists it in the child session"`
 
-**C16** - Two expands of `C` while its connect is pending send `conn/create` once (AC 14)
+**C16** - Two expands of `C` while its connect is pending send `conn/create` once (AC 14) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "concurrent expands connect once"`
 
-**C17** - For a CockroachDB saved connection with JWT auth and no password, expanding it calls the same prompt as the connection screen (`BeekeeperPlugin.promptJwtToken`); with the prompt cancelled, no `conn/create` is sent and the node stays collapsed and `idle`; with a token, `conn/create` carries `config.password` equal to the token (AC 15)
+**C17** - For a CockroachDB saved connection with JWT auth and no password, expanding it calls the same prompt as the connection screen (`BeekeeperPlugin.promptJwtToken`); with the prompt cancelled, no `conn/create` is sent and the node stays collapsed and `idle`; with a token, `conn/create` carries `config.password` equal to the token (AC 15) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "ephemeral prompt cancel leaves the connection closed"`
 
-**C18** - Choosing "Disconnect" on connected `C` sends `conn/disconnect` then `conn/clearConnection`, both with `sId === "w1::connection::7"`, after which `C` is collapsed and `connectionTree` holds no databases or entities for 7 (AC 16)
+**C18** - Choosing "Disconnect" on connected `C` sends `conn/disconnect` then `conn/clearConnection`, both with `sId === "w1::connection::7"`, after which `C` is collapsed and `connectionTree` holds no databases or entities for 7 (AC 16) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "disconnect closes the child session"`
 
-**C19** - With a tab bound to `C` that has an active transaction (and separately one with a reserved connection), `C`'s "Disconnect" menu item is disabled; with neither, it is enabled (AC 17)
+**C19** - With a tab bound to `C` that has an active transaction (and separately one with a reserved connection), `C`'s "Disconnect" menu item is disabled; with neither, it is enabled (AC 17) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "disconnect is disabled while a tab transaction is open"`
 
-**C20** - With `C` and `D` connected, the store's `disconnect` (and separately `rollbackConnection`) sends `conn/disconnect` for `w1::connection::7` and `w1::connection::9` before the window's own `conn/disconnect`, and `connectionTree` is empty afterwards (AC 18)
+**C20** - With `C` and `D` connected, the store's `disconnect` (and separately `rollbackConnection`) sends `conn/disconnect` for `w1::connection::7` and `w1::connection::9` before the window's own `conn/disconnect`, and `connectionTree` is empty afterwards (AC 18) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "window disconnect closes every secondary connection"`
 
-**C21** - Removing window state `w1` (the utility's `close`) removes `w1::connection::7` and `w1::connection::9`, leaves `w2::connection::7` alone, and ends the child servers (AC 19)
+**C21** - Removing window state `w1` (the utility's `close`) removes `w1::connection::7` and `w1::connection::9`, leaves `w2::connection::7` alone, and ends the child servers (AC 19) ✅
 Proof: `VU tests/vitest/unit/handlers/childSession.spec.ts -t "closing a window removes its child sessions"`
 
-**C22** - With filter `use`, connected `C` whose `shop` holds `users` and `orders` shows `C › shop › users` without being expanded by hand, hides `orders`, and a loaded `audit` of `C` with no match is hidden (AC 20)
+**C22** - With filter `use`, connected `C` whose `shop` holds `users` and `orders` shows `C › shop › users` without being expanded by hand, hides `orders`, and a loaded `audit` of `C` with no match is hidden (AC 20) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "filter applies to secondary connections"`
 
 ### S3 - tabs on a secondary connection · 26 files · 431 KB · ~108k
@@ -126,7 +126,7 @@ Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "secondary conn
 **C34** - A tab with `targetConnectionId = null` resolves the window client (`connectionFor(null)` returns the window's client object), the window's `dialect`, and its `databaseName` rules as before (AC 30)
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "tabs without a target connection are unchanged"`
 
-**C35** - The context menu of an entity on `C` lists exactly View Data, View Structure, New query and Copy Name; database nodes of `C` list New query only; connection node `C` lists New query, Refresh and Disconnect. Export, import, backup, create, drop, truncate, duplicate, pin, hide and Set color are absent from all three (AC 31)
+**C35** - The context menu of an entity on `C` lists exactly View Data, View Structure, New query and Copy Name; database nodes of `C` list New query only; connection node `C` lists New query, Refresh and Disconnect. Export, import, backup, create, drop, truncate, duplicate, pin, hide and Set color are absent from all three (AC 31) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "secondary nodes offer only their actions"`
 
 **C36** - Activating a tab bound to `C` on `shop.public.users`, while the window's `a` also has `public.users`, commits a selection key starting with `connection::7::` that differs from every window item key, and the tree reveals `C`'s `users` item (AC 36)
