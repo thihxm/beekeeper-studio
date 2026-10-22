@@ -78,10 +78,14 @@ export default {
   &.error {
     opacity: 1;
   }
+  .truncate {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   .retry {
     cursor: pointer;
     text-decoration: underline;
-    flex-shrink: 0;
+    flex: 0 0 auto;
   }
 }
 </style>
