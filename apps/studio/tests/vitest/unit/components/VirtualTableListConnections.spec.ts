@@ -385,6 +385,8 @@ describe("connection level of the entity tree", () => {
       const node = item(vm, key);
       expect(vm.displayItems).toContain(node);
       expect(node.expanded).toBe(false);
+      // and drawn closed: the row's chevron comes from isOpen, not the stored flag
+      expect(vm.isOpen(node)).toBe(false);
       expect(vm.displayItems.filter((i: any) => i.parent === node)).toEqual([]);
     }
   });

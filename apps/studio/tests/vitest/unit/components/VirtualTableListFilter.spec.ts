@@ -166,6 +166,8 @@ describe("VirtualTableList filter across loaded databases", () => {
     const d = databaseItem(vm, "d");
     expect(vm.displayItems).toContain(d);
     expect(d.expanded).toBe(false);
+    // and drawn closed: the row's chevron comes from isOpen, not the stored flag
+    expect(vm.isOpen(d)).toBe(false);
     expect(vm.displayItems.filter((i: any) => i.parent === d)).toEqual([]);
   });
 
