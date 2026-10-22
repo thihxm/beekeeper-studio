@@ -50,7 +50,7 @@ flowchart TD
     DISC["store disconnect / rollbackConnection (exist)"] --> CLOSE["utility: end every child session of the window"]
 ```
 
-1. `VirtualTableList` builds the connection level from the window's connection plus the saved connections allowed by `connectionTreeScope` (door 3): pinned only (`pinnedConnections`), or every saved connection of the current workspace. The window's own saved connection is never listed twice
+1. `VirtualTableList` builds the connection level from the window's connection plus the saved connections allowed by `connectionTreeScope` (door 3): none (`off`), pinned only (`pinnedConnections`), or every saved connection of the current workspace. The window's own saved connection is never listed twice
 2. Expanding a secondary connection → `connectionTree` store module (new, placement): runs `resolveEphemeralValues` (exists), then `conn/create` through an `ElectronUtilityConnectionClient` whose `send` sets `sId` to the child key (door 1). `UtilityConnection.send` already lets an explicit `sId` win over its own (`{ sId: this._sId, ...args }`)
 3. The utility's `runHandler` (exists) sees an unknown child key whose parent session exists, creates a `State` for it that shares the parent's port, and runs the handler. `conn/create`, `connectionFor`, eviction and the sweep then work per child exactly as they do for the window
 4. The module loads the child's `databaseList`, `inaccessibleDatabases`, `supportedFeatures`, `defaultSchema` and the default database's entities; other databases of that connection load on expand, as today. `VirtualTableList` renders them with the existing database, schema and entity items
@@ -98,7 +98,7 @@ thing they carry. The plugin API is unchanged (see Out of scope).
 | --- | --- | --- |
 | 1 · Child utility session per secondary connection | session key `` `${windowSid}::connection::${savedConnectionId}` ``, passed as `sId` by `ElectronUtilityConnectionClient` (`forConnection(savedConnectionId)`); the utility creates its `State` on first use when the parent `windowSid` exists, shares the parent's `port`, and removes every child on the parent's `close` | A `connectionId` routing param on every `conn/*` handler: about 80 handler signatures and a second dimension in `connectionFor`, a large rewrite of upstream files this fork syncs. One utility process per connection: a new process lifecycle in the main process for state that already isolates per session. |
 | 2 · Tab bound to a target connection | migration `20261021_add_tab_target_connection_id.js`: `ALTER TABLE tabs ADD COLUMN "targetConnectionId" integer NULL`; `OpenTab.targetConnectionId: number \| null` in `pickable`; `matches()` compares it (null = window's connection) for every tab type | Not persisting secondary tabs: they would vanish on restart while their window's other tabs come back. Saving the tab under the target's `connectionId`: it would disappear from this window and show up in the target's own window. |
-| 3 · Scope setting | user setting `connectionTreeScope` with values `"pinned"` \| `"all"`, default `"pinned"` when absent, saved with `settings/save` and switched from the Entities header menu | A `[ui.tableList]` key in `user.config.ini`: needs a file edit and a restart for something the user flips while working. A per-connection option: the list is the user's, not one connection's. |
+| 3 · Scope setting | user setting `connectionTreeScope` with values `"pinned"` \| `"all"`, default `"pinned"` when absent, saved with `settings/save` and switched from the Entities header menu. **Amended 2026-10-22 (captain's plan review):** values are `"off"` \| `"pinned"` \| `"all"`, default still `"pinned"`; `"off"` hides the connection level | A `[ui.tableList]` key in `user.config.ini`: needs a file edit and a restart for something the user flips while working. A per-connection option: the list is the user's, not one connection's. |
 
 - Nothing else is hard to reverse. The `connectionTree` store shape, the node layout and the context menus are refactorable.
 
@@ -115,9 +115,10 @@ The tree lists the window's connection and the saved connections the scope allow
 3. IF the scope lists no secondary connection THEN the tree SHALL render no connection level, exactly as before this feature
 4. The tree SHALL show the window's connection as the first connection node, expanded on connect, with today's tree under it
 5. The tree SHALL show, on every connection node, the connection's name and its saved `labelColor` (no color mark for `default`)
-6. WHEN the user picks "Pinned connections" or "All saved connections" in the Entities header menu THEN the system SHALL save `connectionTreeScope` as `pinned` or `all` and SHALL rebuild the connection level without a restart
+6. WHEN the user picks "No other connections", "Pinned connections" or "All saved connections" in the Entities header menu THEN the system SHALL save `connectionTreeScope` as `off`, `pinned` or `all` and SHALL rebuild the connection level without a restart
 7. WHEN a saved connection is pinned, unpinned, renamed, recolored, created or deleted THEN the connection level SHALL reflect it the next time the tree is rebuilt, without reconnecting the window
 8. The tree SHALL never list a connection that is not saved (quick connect, URL, recent-only)
+35. WHERE `connectionTreeScope` is `off`, the tree SHALL render no connection level, even when saved connections are pinned (added 2026-10-22 from the captain's plan review)
 
 **Independent test:** pin two saved connections, connect to a third. The tree shows the third
 on top and the two pinned ones under it with their colors. Switch the menu to "All saved
@@ -190,7 +191,7 @@ tab and a blue tab and the bottom bar follows; close the blue tab and it stays r
 | Pins, hidden entities and database colors on secondary connections | Those records are keyed by the window's connection; would need their own scoping |
 | Export, import, backup, SQL generator, create/drop/truncate on secondary connections | Same reason the previous feature hid them on non-default databases: those flows are built on the window's connection |
 | Promoting a secondary connection to the window's connection | Use the connection screen as today |
-| Plugin API awareness of secondary connections | `PluginStoreService` keeps reporting and running on the window's connection (see open question 2) |
+| Plugin API awareness of secondary connections | `PluginStoreService` keeps reporting and running on the window's connection; a known limitation accepted in the captain's plan review (2026-10-22) |
 | Recent (unsaved) connections in the tree | The request limits the tree to saved connections |
 | A cap on open secondary connections | Each one is opened and closed by the user; database clients inside each are already capped by `maxOpenDatabases` |
 
@@ -205,13 +206,10 @@ tab and a blue tab and the bottom bar follows; close the blue tab and it stays r
 | Window connection node | listed first, uses the window connection's name and color, has no new menu | disconnecting it stays in `ConnectionButton` | n |
 | Workspace | secondary connections come from the window's current workspace (local or cloud) | pins and saved connections are per workspace | n |
 
-**Open questions:**
-
-| # | Kind | Question | Until answered |
-| --- | --- | --- | --- |
-| 1 | open | Besides `pinned` and `all`, should the scope have an `off` value that hides the connection level even when connections are pinned? | Written with two values; with scope `pinned` and nothing pinned the tree is today's (AC 3) |
-| 2 | open | A plugin (AI Shell, ER diagram) asked for the active tab while it is bound to a secondary connection would get that tab's `databaseName` but run its query on the window's connection. Keep the plugin API unchanged (default), or report such tabs to plugins as having no table/query context? | Default: unchanged, noted as a known limitation |
-| 3 | open | Should the secondary connections a user had open come back expanded after a restart, or only connect when a restored tab is used (default, AC 24)? | Default: lazy, nothing reconnects on start-up |
+**Open questions:** none - all three were answered in the captain's plan review (2026-10-22):
+`off` was added to `connectionTreeScope` (door 3, AC 6, 35); the plugin API stays unchanged for
+secondary-connection tabs, a known limitation (Out of scope); secondary connections reconnect
+lazily after a restart (AC 24), nothing reconnects on start-up.
 
 ## Observable
 
