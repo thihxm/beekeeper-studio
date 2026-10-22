@@ -91,6 +91,23 @@ export async function resolveEphemeralValues(config: IConnection): Promise<IConn
   return config;
 }
 
+/** The connection a tab runs on, as `connectionContext` describes it */
+export interface ConnectionContext {
+  /** the saved connection opened from the tree; null for the window's */
+  connectionId: number | null,
+  config: Nullable<IConnection>,
+  connectionType: Nullable<string>,
+  dialect: Dialect | null,
+  dialectData: any,
+  supportedFeatures: Nullable<SupportedFeatures>,
+  defaultSchema: Nullable<string>,
+  /** its default database */
+  database: Nullable<string>,
+  databaseList: string[],
+  /** the tab names a saved connection the workspace no longer has */
+  missing: boolean,
+}
+
 /** Entities of one non-default database, loaded on demand */
 export interface DatabaseEntities {
   tables: TableOrView[],
@@ -220,22 +237,52 @@ const store = new Vuex.Store<State>({
     databaseKey(state) {
       return (database: string) => state.connectionType === 'surrealdb' ? `${state.namespace}::${database}` : database
     },
-    /** The client for `database`; the default connection for null or the default database */
+    /**
+     * The client for `database`; the default connection for null or the default database.
+     * With `targetConnectionId`, a database of that saved connection opened from the tree.
+     */
     connectionFor(state, getters) {
-      return (database?: string | null): ElectronUtilityConnectionClient =>
-        connectionForTab(state.connection, { databaseName: database }, state.database, getters.databaseKey)
+      return (database?: string | null, targetConnectionId?: number | null): ElectronUtilityConnectionClient => {
+        if (targetConnectionId != null) return getters['connectionTree/clientFor'](targetConnectionId, database)
+        return connectionForTab(state.connection, { databaseName: database }, state.database, getters.databaseKey)
+      }
     },
     /** Entities of `database`; the default database's for null */
-    tablesFor(state) {
-      return (database?: string | null): TableOrView[] => {
+    tablesFor(state, getters) {
+      return (database?: string | null, targetConnectionId?: number | null): TableOrView[] => {
+        if (targetConnectionId != null) return getters['connectionTree/tablesFor'](targetConnectionId, database)
         if (database == null || database === state.database) return state.tables
         return state.databaseEntities[database]?.tables ?? []
       }
     },
-    routinesFor(state) {
-      return (database?: string | null): Routine[] => {
+    routinesFor(state, getters) {
+      return (database?: string | null, targetConnectionId?: number | null): Routine[] => {
+        if (targetConnectionId != null) return getters['connectionTree/routinesFor'](targetConnectionId, database)
         if (database == null || database === state.database) return state.routines
         return state.databaseEntities[database]?.routines ?? []
+      }
+    },
+    /**
+     * What a tab needs to know about the connection it runs on: the window's for
+     * null, or a saved connection opened from the tree
+     */
+    connectionContext(state, getters) {
+      return (targetConnectionId?: number | null): ConnectionContext => {
+        if (targetConnectionId == null) {
+          return {
+            connectionId: null,
+            config: state.usedConfig,
+            connectionType: state.connectionType,
+            dialect: getters.dialect,
+            dialectData: getters.dialectData,
+            supportedFeatures: state.supportedFeatures,
+            defaultSchema: state.defaultSchema,
+            database: state.database,
+            databaseList: state.databaseList,
+            missing: false,
+          }
+        }
+        return getters['connectionTree/context'](targetConnectionId)
       }
     },
     defaultSchema(state) {
@@ -329,6 +376,12 @@ const store = new Vuex.Store<State>({
     },
     connectionColor(state) {
       return state.usedConfig?.labelColor ?? 'default'
+    },
+    /** The color of the connection the active tab runs on; the window's when it runs on that one */
+    activeConnectionColor(state, getters) {
+      const target = state['tabs']?.active?.targetConnectionId
+      if (target == null) return getters.connectionColor
+      return getters['connectionTree/context'](target).config?.labelColor || 'default'
     },
     schemas(state) {
       if (state.tables.find((t) => !!t.schema)) {
@@ -770,15 +823,18 @@ const store = new Vuex.Store<State>({
       context.commit('routines', []);
     },
 
-    async updateDatabaseTableColumns(context, { database, table }: { database: string, table: TableOrView }) {
-      if (database == null || database === context.state.database) {
+    async updateDatabaseTableColumns(context, { database, table, targetConnectionId = null }: { database: string, table: TableOrView, targetConnectionId?: number | null }) {
+      if (targetConnectionId == null && (database == null || database === context.state.database)) {
         return await context.dispatch('updateTableColumns', table)
       }
-      const connection: ElectronUtilityConnectionClient = context.getters.connectionFor(database)
+      const connection: ElectronUtilityConnectionClient = context.getters.connectionFor(database, targetConnectionId)
       const columns = table.entityType === 'materialized-view' ?
         await connection.listMaterializedViewColumns(table.name, table.schema) :
         await connection.listTableColumns(table.name, table.schema)
-      const existing = context.state.databaseEntities[database]?.tables.find((t) => tablesMatch(t, table))
+      const entities: TableOrView[] = targetConnectionId == null ?
+        context.state.databaseEntities[database]?.tables :
+        context.getters.tablesFor(database, targetConnectionId)
+      const existing = entities?.find((t) => tablesMatch(t, table))
       // in place, like the default database's `table` commit, so open tabs keep their table object
       if (existing) context.commit('databaseTableColumns', { table: existing, columns })
     },

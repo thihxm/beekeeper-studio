@@ -99,6 +99,7 @@ import addWindowsAuthToConnections from './20260618_add_windows_auth_to_connecti
 import addSqlServerOptions from './20260626_add_sqlserver_options'
 import addTabDatabaseName from './20261015_add_tab_database_name'
 import createDatabaseLabels from './20261016_create_database_labels'
+import addTabTargetConnectionId from './20261021_add_tab_target_connection_id'
 import fixQueryAuditAppendOnlyTrigger from './20260914_fix_query_audit_append_only_trigger'
 import addScopeToPluginData from './20261011_add_scope_to_plugin_data'
 
@@ -161,6 +162,7 @@ const realMigrations = [
   addScopeToPluginData,
   addTabDatabaseName,
   createDatabaseLabels,
+  addTabTargetConnectionId,
 ]
 
 // fixtures require the models
@@ -174,6 +176,8 @@ const devMigrations = [
 ]
 
 const migrations = [...realMigrations, ...fixtures, ...devMigrations]
+
+export { realMigrations }
 
 const Manager = {
   ceQuery: "select name from bk_migrations where name = ?",

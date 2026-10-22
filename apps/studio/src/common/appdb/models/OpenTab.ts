@@ -8,7 +8,7 @@ import { TabType, TransportOpenTab } from "@/common/transport/TransportOpenTab";
 import { isValidConnectionId } from "@/handlers/utils";
 
 
-const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'entityType', 'titleScope', 'connectionId', 'workspaceId', 'position', 'databaseName']
+const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'entityType', 'titleScope', 'connectionId', 'workspaceId', 'position', 'databaseName', 'targetConnectionId']
 
 interface ConnectionIds {
   connectionId: number,
@@ -74,6 +74,10 @@ export class OpenTab extends ApplicationEntity {
   /** The database the tab runs on; null follows the connection's default database */
   @Column({type: 'varchar', nullable: true})
   databaseName?: string | null
+
+  /** The saved connection the tab runs on; null is the window's connection (connectionId) */
+  @Column({ type: 'integer', nullable: true })
+  targetConnectionId?: number | null
 
   @IsInt({ message: 'connectionId must be a saved connection id' })
   @Min(1, { message: 'connectionId must be a saved connection id' })
@@ -165,6 +169,11 @@ export class OpenTab extends ApplicationEntity {
   matches(other: OpenTab, defaultDatabase: string | null = null): boolean {
     // new tabs don't have a workspace set
     if (other.workspaceId && this.workspaceId && this.workspaceId !== other.workspaceId) {
+      return false;
+    }
+
+    // a tab on another saved connection is never the same tab
+    if ((this.targetConnectionId ?? null) !== (other.targetConnectionId ?? null)) {
       return false;
     }
 

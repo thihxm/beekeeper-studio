@@ -218,7 +218,7 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapGetters(["dialectData", "minimalMode"]),
+    ...mapGetters(["minimalMode"]),
     
     additionalFilters() {
       const [_, ...additional] = this.filters;

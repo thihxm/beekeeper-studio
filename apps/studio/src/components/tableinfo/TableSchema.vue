@@ -122,7 +122,6 @@ import { vueEditor, vueFormatter, trashButton, TabulatorStateWatchers, moveRowHa
 import CheckboxFormatterVue from '@shared/components/tabulator/CheckboxFormatter.vue'
 import CheckboxEditorVue from '@shared/components/tabulator/CheckboxEditor.vue'
 import NullableInputEditorVue from '@shared/components/tabulator/NullableInputEditor.vue'
-import { mapGetters, mapState } from 'vuex'
 import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { getDialectData } from '@shared/lib/dialects'
 import { AppEvent } from '@/common/AppEvent'
@@ -179,8 +178,6 @@ export default Vue.extend({
     ...TabulatorStateWatchers
   },
   computed: {
-    ...mapGetters(['dialect', 'dialectData']),
-    ...mapState(['usedConfig']),
     hotkeys() {
       if (!this.active) return {}
       return this.$vHotkeyKeymap({

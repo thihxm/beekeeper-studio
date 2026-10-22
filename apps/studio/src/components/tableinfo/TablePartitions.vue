@@ -93,7 +93,6 @@ import NullableInputEditorVue from '@shared/components/tabulator/NullableInputEd
 import { AppEvent } from '@/common/AppEvent';
 import { FormatterDialect } from '@shared/lib/dialects/models';
 import { format } from 'sql-formatter';
-import { mapState } from 'vuex';
 import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { StructureCopyMixin } from '@/mixins/structureCopy';
 import { StructureFilterMixin } from '@/mixins/structureFilter';
@@ -124,7 +123,6 @@ export default Vue.extend({
     ...TabulatorStateWatchers
   },
   computed: {
-    ...mapState(['supportedFeatures']),
     hotkeys() {
       if (!this.active) return {};
       return this.$vHotkeyKeymap({

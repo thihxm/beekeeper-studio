@@ -47,4 +47,39 @@ describe("CoreTabHeader", () => {
     const uncolored = mountHeader({ id: 5, tabType: "query", title: "Query #4", databaseName: "c" }, "a", colors);
     expect(uncolored.find(".tab-color-stripe").exists()).toBe(false);
   });
+
+  it("secondary connection name and color in the tab header", () => {
+    const contexts = {
+      7: { config: { name: "shop-mysql", labelColor: "blue" }, database: "shop", dialectData: { disabledFeatures: {} } },
+    };
+    const store = new Vuex.Store({
+      state: { database: "a" },
+      getters: {
+        minimalMode: () => false,
+        dialectData: () => ({ disabledFeatures: {} }),
+        connectionContext: () => (id: number) => contexts[id],
+      },
+      modules: {
+        tabs: { namespaced: true, state: { active: null } },
+        databaseLabels: { namespaced: true, getters: { colorFor: () => () => "green" } },
+      },
+    });
+    const mountWith = (tab: any) => mount(CoreTabHeader, {
+      localVue,
+      store,
+      propsData: { tab, tabsCount: 1, selected: false },
+      stubs: { TabIcon: true },
+      mocks: { $vHotkeyKeymap: () => ({}), $bks: { openMenu: vi.fn() } },
+    });
+
+    const onC = mountWith({ id: 6, tabType: "table", title: "users", targetConnectionId: 7, databaseName: "shop" });
+    expect(onC.find(".tab-connection").text()).toBe("shop-mysql");
+    expect(onC.find(".tab-database").text()).toBe("shop");
+    expect(onC.find(".tab-color-stripe").classes()).toContain("connection-label-color-blue");
+
+    // a tab on the window's connection is unchanged: no connection name, the database color
+    const onWindow = mountWith({ id: 7, tabType: "table", title: "users", targetConnectionId: null, databaseName: "b" });
+    expect(onWindow.find(".tab-connection").exists()).toBe(false);
+    expect(onWindow.find(".tab-color-stripe").classes()).toContain("connection-label-color-green");
+  });
 });

@@ -74,11 +74,13 @@ export const TabModule: Module<State, RootState> = {
     sortedTabs(state) {
       return _.sortBy(state.tabs, 'position')
     },
-    fatTabs(state, _getters, rootState) {
+    fatTabs(state, _getters, rootState, rootGetters) {
       return state.tabs.map((tab) => {
         const query = tab.queryId ? rootState['data/queries']['items'].find((q) => q.id === tab.queryId) : null
-        const tables = tab.databaseName == null || tab.databaseName === rootState.database ?
-          rootState.tables : rootState.databaseEntities[tab.databaseName]?.tables ?? []
+        const tables = tab.targetConnectionId != null ?
+          rootGetters['connectionTree/tablesFor'](tab.targetConnectionId, tab.databaseName) :
+          tab.databaseName == null || tab.databaseName === rootState.database ?
+            rootState.tables : rootState.databaseEntities[tab.databaseName]?.tables ?? []
         const table = tab.tableName ? tables.find((t) => {
           return t.name === tab.tableName && t.schema === tab.schemaName
         }) : null

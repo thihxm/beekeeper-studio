@@ -78,7 +78,9 @@ export const FkLinkMixin = {
 
       // the destination lives in the same database as this tab
       const database = this.tab?.databaseName ?? this.tabDatabase?.() ?? null
-      const tables = this.$store.getters.tablesFor(database)
+      // ...and on the same connection
+      const connectionId = this.tab ? (this.tab.targetConnectionId ?? null) : (this.tabConnectionId?.() ?? null)
+      const tables = this.$store.getters.tablesFor(database, connectionId)
       let table = tables.find(t => {
         return (!schemaName || schemaName === t.schema) && t.name === tableName
       })
@@ -146,7 +148,7 @@ export const FkLinkMixin = {
       });
 
       const payload = {
-        table, filters, titleScope: values.join(','), database,
+        table, filters, titleScope: values.join(','), database, connectionId,
       }
       this.$root.$emit('loadTable', payload)
       this.trigger(AppEvent.selectSecondarySidebarTab, "json-viewer")

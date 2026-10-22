@@ -64,9 +64,10 @@
 </template>
 <script lang="js">
 import { TableFilterSymbols } from '@/lib/db/types';
-import {mapState} from 'vuex'
+import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 
 export default {
+  mixins: [TabDatabaseMixin],
   props: ['filter', 'columns', 'index'],
   data: () => ({}),
   watch: {
@@ -78,7 +79,6 @@ export default {
     }
   },
   computed: {
-    ...mapState(['supportedFeatures']),
     filterTypes() {
       const filterTypes = this.supportedFeatures.filterTypes ?? ['standard']
       

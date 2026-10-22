@@ -71,7 +71,8 @@ describe("tabs bound to another database load their columns from it", () => {
 
     await FkLinkMixin.methods.fkClick.call(ctx, { toTable: "customers", toSchema: "public", toColumn: "id", fromColumn: "customer_id" }, cell);
 
-    expect(tablesFor).toHaveBeenCalledWith("b");
+    // the window's connection: no target connection
+    expect(tablesFor).toHaveBeenCalledWith("b", null);
     expect(ctx.$root.$emit).toHaveBeenCalledWith(AppEvent.loadTable, expect.objectContaining({ table: customersB, database: "b" }));
     expect(ctx.$noty.error).not.toHaveBeenCalled();
   });
@@ -167,10 +168,10 @@ describe("tabs bound to another database load their columns from it", () => {
     const tablesFor = vi.fn((db: string) => (db === "b" ? tablesB : [{ name: "users", schema: "public" }]));
     // the default database's getters, which the picker must not use
     const $store = { getters: { tablesFor, schemas: ["public"], schemaTables: [{ schema: "public", tables: [] }] } };
-    const ctx: any = { tabDatabase: () => "b", $store };
+    const ctx: any = { tabDatabase: () => "b", tabConnectionId: () => null, $store };
     ctx.tables = computed(TableRelations).tables.call(ctx);
 
-    expect(tablesFor).toHaveBeenCalledWith("b");
+    expect(tablesFor).toHaveBeenCalledWith("b", null);
     expect(computed(TableRelations).schemas.call(ctx)).toEqual(["sales", "crm"]);
     expect(computed(TableRelations).schemaTables.call(ctx).map((st) => st.schema)).toEqual(["sales", "crm"]);
   });

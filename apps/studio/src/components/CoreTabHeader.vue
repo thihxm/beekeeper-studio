@@ -28,6 +28,10 @@
           v-if="scope && !$store.getters.minimalMode"
           class="tab-title-scope"
         >{{ scope }}</span><span
+          v-if="tabConnectionName"
+          class="tab-connection"
+          :title="`Runs on connection ${tabConnectionName}`"
+        >{{ tabConnectionName }}</span><span
           v-if="tabDatabase"
           class="tab-database"
           :class="tabColor ? `connection-label-color-${tabColor}` : null"
@@ -202,7 +206,20 @@ import _ from 'lodash'
         return result.length === 0 ? null : result
       },
       /** The database shown in the header: always for query tabs, and for other tabs bound to a non-default one */
+      /** the saved connection opened from the tree the tab runs on, or null for the window's */
+      tabConnection() {
+        const id = this.tab.targetConnectionId
+        if (id == null || !this.$store.getters.connectionContext) return null
+        return this.$store.getters.connectionContext(id)
+      },
+      tabConnectionName() {
+        return this.tabConnection ? this.tabConnection.config?.name ?? 'Saved connection not found' : null
+      },
       tabDatabase() {
+        if (this.tabConnection) {
+          if (this.tabConnection.dialectData?.disabledFeatures?.multipleDatabases) return null
+          return this.tab.databaseName ?? this.tabConnection.database ?? null
+        }
         if (this.$store.getters.dialectData?.disabledFeatures?.multipleDatabases) return null
         const defaultDatabase = this.$store.state.database
         if (this.tab.tabType === 'query') return this.tab.databaseName ?? defaultDatabase ?? null
@@ -212,6 +229,11 @@ import _ from 'lodash'
       /** label color of the tab's database */
       tabColor() {
         if (!['query', 'table', 'table-properties'].includes(this.tab.tabType)) return null
+        // a tab on another saved connection wears that connection's color
+        if (this.tabConnection) {
+          const color = this.tabConnection.config?.labelColor
+          return color && color !== 'default' ? color : null
+        }
         const database = this.tab.databaseName ?? this.$store.state.database
         return this.$store.getters['databaseLabels/colorFor'](database)
       },

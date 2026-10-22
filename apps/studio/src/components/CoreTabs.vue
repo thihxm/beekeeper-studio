@@ -324,6 +324,13 @@ import { safeSqlFormat as safeFormat } from '@/common/utils';
 import { TabTypeConfig, TransportOpenTab, TransportPluginTab, setFilters, matches, duplicate } from '@/common/transport/TransportOpenTab'
 import { wait } from '@/shared/lib/wait'
 
+/** the database a new tab runs on: the one asked for, or the default of its connection */
+function databaseForNewTab(store: any, database: string | null | undefined, connectionId: number | null | undefined): string | null {
+  if (database != null) return database
+  if (connectionId != null) return store.getters.connectionContext(connectionId).database ?? null
+  return store.state.database ?? null
+}
+
 export default Vue.extend({
   props: [],
   components: {
@@ -431,6 +438,7 @@ export default Vue.extend({
         { event: AppEvent.closeTab, handler: this.closeCurrentTab },
         { event: AppEvent.closeAllTabs, handler: this.closeAll },
         { event: AppEvent.newTab, handler: this.createQuery },
+        { event: AppEvent.newQueryOnConnection, handler: this.createQueryOnConnection },
         { event: AppEvent.newCustomTab, handler: this.addTab },
         { event: AppEvent.createTable, handler: this.openTableBuilder },
         { event: AppEvent.createTableFromFile, handler: this.beginImport },
@@ -966,25 +974,37 @@ export default Vue.extend({
       tab.unsavedChanges = true
       this.addTab(tab)
     },
-    openTableProperties({ table, database }) {
+    /** A query tab on a saved connection opened from the entity tree */
+    async createQueryOnConnection({ connectionId, database }: { connectionId: number, database?: string | null }) {
+      const result = {} as TransportOpenTab
+      result.tabType = 'query'
+      result.title = this.getNextQueryTitle()
+      result.unsavedChanges = false
+      result.targetConnectionId = connectionId
+      result.databaseName = databaseForNewTab(this.$store, database, connectionId)
+      await this.addTab(result)
+    },
+    openTableProperties({ table, database, connectionId = null }) {
       const t = {} as TransportOpenTab;
       t.tabType = 'table-properties';
       t.tableName = table.name ?? table.tableName
       t.schemaName = table.schema ?? table.schemaName
       t.title = table.name ?? table.tableName
-      t.databaseName = database ?? this.$store.state.database ?? null
+      t.targetConnectionId = connectionId ?? null
+      t.databaseName = databaseForNewTab(this.$store, database, connectionId)
       const existing = this.tabItems.find((tab) => matches(tab, t, this.$store.state.database))
       if (existing) return this.$store.dispatch('tabs/setActive', existing)
       this.addTab(t)
     },
-    async openTable({ table, filters, database }) {
+    async openTable({ table, filters, database, connectionId = null }) {
       let tab = {} as TransportOpenTab;
       tab.tabType = 'table';
       tab.title = table.name ?? table.tableName
       tab.tableName = table.name ?? table.tableName
       tab.schemaName = table.schema ?? table.schemaName
       tab.entityType = table.entityType
-      tab.databaseName = database ?? this.$store.state.database ?? null
+      tab.targetConnectionId = connectionId ?? null
+      tab.databaseName = databaseForNewTab(this.$store, database, connectionId)
       tab = setFilters(tab, filters)
       tab.titleScope = "all"
       let existing = this.tabItems.find((t) => matches(t, tab, this.$store.state.database))

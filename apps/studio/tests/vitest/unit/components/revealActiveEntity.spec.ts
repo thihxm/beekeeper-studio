@@ -7,6 +7,7 @@ import { sidebarKeyForTab } from "@/common/sidebarKey";
 import CoreTabHeader from "@/components/CoreTabHeader.vue";
 import CoreTabs from "@/components/CoreTabs.vue";
 import VirtualTableList from "@/components/sidebar/core/table_list/VirtualTableList.vue";
+import { ConnectionTreeModule } from "@/store/modules/ConnectionTreeModule";
 
 const localVue = createLocalVue();
 localVue.use(Vuex);
@@ -158,5 +159,64 @@ describe("revealing the active tab's table", () => {
     expect(vm.items.map((i: any) => [i.key, i.expanded])).toEqual(before);
     expect(scrollToIndex).toHaveBeenCalledTimes(0);
     expect(loadDatabaseEntities).toHaveBeenCalledTimes(0);
+  });
+
+  it("secondary connection tabs select their own connection item", async () => {
+    // the window's `a` and saved connection 7's `shop` both have public.users
+    const tab = { id: 11, tabType: "table", tableName: "users", schemaName: "public", entityType: "table", databaseName: "shop", targetConnectionId: 7 };
+    const ctx = { tab, activeTab: tab, $store: { state: { database: "a" }, commit: vi.fn() }, trigger: vi.fn() };
+    ((CoreTabHeader as any).options ?? CoreTabHeader).watch.activeTab.call(ctx);
+    const key = ctx.$store.commit.mock.calls[0][1];
+    expect(key.startsWith("connection::7::")).toBe(true);
+    expect(ctx.trigger).toHaveBeenCalledWith(AppEvent.revealSidebarItem, key);
+
+    Vue.prototype.$util = { send: vi.fn(async (name: string) => (name === "appdb/saved/find" ? [{ id: 3, name: "app" }, { id: 7, name: "shop-mysql" }] : null)), sId: "w1" };
+    const store = new Vuex.Store({
+      state: {
+        database: "a", databaseList: ["a"], databaseEntities: {}, inaccessibleDatabases: [],
+        entityFilter: { filterQuery: undefined, showTables: true, showViews: true, showRoutines: true, showPartitions: false },
+        usedConfig: { id: 3, name: "app" }, workspaceId: -1, activeTab: null, "data/connections": { items: [] },
+      },
+      getters: {
+        defaultSchema: () => "public", minimalMode: () => false, dialect: () => "postgresql",
+        dialectData: () => ({ disabledFeatures: {} }), selectedSidebarItem: () => null, cloudClient: () => null,
+        schemaTables: () => [{ schema: "public", tables: [usersA], routines: [] }],
+      },
+      actions: { loadDatabaseEntities: vi.fn(), updateDatabaseTableColumns: vi.fn() },
+      modules: {
+        connectionTree: ConnectionTreeModule,
+        settings: { namespaced: true, getters: { settings: () => ({}) } },
+        pinnedConnections: { namespaced: true, state: { pins: [{ connectionId: 7, position: 0 }] } },
+        pins: { namespaced: true, state: { pins: [] } },
+        hideEntities: { namespaced: true, state: { entities: [], schemas: [] } },
+        databaseLabels: { namespaced: true, getters: { colorFor: () => () => null } },
+      },
+    });
+    store.commit("connectionTree/update", { id: 7, changes: { status: "connected", connectionType: "mysql", database: "shop", databaseList: ["audit", "shop"] } });
+    store.commit("connectionTree/databaseEntities", { id: 7, database: "shop", entities: { status: "loaded", tables: [{ ...usersB }, { ...salesB }], routines: [] } });
+    wrapper = mount(VirtualTableList, {
+      localVue,
+      store,
+      mocks: { $bksConfig: { ui: { tableList: { itemHeight: 20, revealActiveEntity: true } }, security: {} }, $bks: { openMenu: vi.fn() } },
+    });
+    const vm = wrapper.vm as any;
+    const scrollToIndex = vi.fn();
+    vm.$refs.vList.scrollToIndex = scrollToIndex;
+    await flush();
+    await new Promise((r) => setTimeout(r, 0));
+    await flush();
+
+    const windowKeys = vm.items.filter((i: any) => i.connectionId == null).map((i: any) => i.key);
+    expect(windowKeys).not.toContain(key);
+    const target = vm.items.find((i: any) => i.key === key);
+    expect(target.connectionId).toBe(7);
+    expect(target.entity.name).toBe("users");
+
+    vm.revealItem(key);
+    await flush();
+
+    expect(vm.items.find((i: any) => i.key === "connection::7").expanded).toBe(true);
+    expect(scrollToIndex).toHaveBeenCalledWith(vm.displayItems.indexOf(target));
+    expect(vm.displayItems.indexOf(target)).toBeGreaterThan(0);
   });
 });

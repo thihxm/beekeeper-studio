@@ -9,7 +9,7 @@ export type PluginTabType = 'plugin-base' | 'plugin-shell';
 export type CoreTabType = 'query' | 'table' | 'table-properties' | 'settings' | 'table-builder' | 'backup' | 'import-export-database' | 'restore' | 'import-table' | 'shell'
 export type TabType = CoreTabType | PluginTabType
 
-const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'context', 'databaseName']
+const pickable = ['title', 'tabType', 'unsavedChanges', 'unsavedQueryText', 'tableName', 'schemaName', 'context', 'databaseName', 'targetConnectionId']
 
 export interface TransportOpenTab<Context = {}> extends Transport {
   tabType: TabType,
@@ -27,6 +27,8 @@ export interface TransportOpenTab<Context = {}> extends Transport {
   entityType?: string,
   /** The database the tab runs on; null follows the connection's default database */
   databaseName?: string | null,
+  /** The saved connection the tab runs on; null is the window's connection (connectionId) */
+  targetConnectionId?: number | null,
   connectionId: number,
   workspaceId?: number,
   filters?: string,
@@ -180,6 +182,11 @@ export function findQuery(obj: TransportOpenTab, queries: ISavedQuery[]): ISaved
 export function matches(obj: TransportOpenTab, other: TransportOpenTab, defaultDatabase: string | null = null): boolean {
   // new tabs don't have a workspace set
   if (other.workspaceId && obj.workspaceId && obj.workspaceId !== other.workspaceId) {
+    return false;
+  }
+
+  // a tab on another saved connection is never the same tab
+  if ((obj.targetConnectionId ?? null) !== (other.targetConnectionId ?? null)) {
     return false;
   }
 
