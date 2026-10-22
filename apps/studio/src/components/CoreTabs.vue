@@ -100,6 +100,7 @@
         <tab-with-table
           v-if="tab.tabType === 'table'"
           :tab="tab"
+          :active="activeTab?.id === tab.id"
           @close="close"
         >
           <template #default="slotProps">
@@ -114,6 +115,7 @@
         <tab-with-table
           v-if="tab.tabType === 'table-properties'"
           :tab="tab"
+          :active="activeTab?.id === tab.id"
           @close="close"
         >
           <template #default="slotProps">

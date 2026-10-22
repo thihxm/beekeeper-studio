@@ -28,7 +28,7 @@ const ROACH = { id: 11, name: "roach", connectionType: "cockroachdb", workspaceI
 const SNOW = { id: 13, name: "snow", connectionType: "snowflake", workspaceId: -1, snowflakeOptions: { authType: SnowflakeAuthType.MFACode } } as any
 
 /** A fake server: one client per database, all answering like a MySQL server with `shop` and `audit` */
-function fakeServer(name: string, opts: { failConnect?: Error, slowConnect?: Promise<void> } = {}) {
+function fakeServer(name: string, opts: { failConnect?: Error, slowConnect?: Promise<void>, failListDatabases?: Error } = {}) {
   const clients: Record<string, any> = {}
   const client = (database: string) => ({
     connectionType: "mysql",
@@ -41,7 +41,10 @@ function fakeServer(name: string, opts: { failConnect?: Error, slowConnect?: Pro
     disconnect: vi.fn(async () => undefined),
     supportedFeatures: vi.fn(async () => ({ customRoutines: true })),
     defaultSchema: vi.fn(async () => null),
-    listDatabases: vi.fn(async () => ["audit", "shop"]),
+    listDatabases: vi.fn(async () => {
+      if (opts.failListDatabases) throw opts.failListDatabases
+      return ["audit", "shop"]
+    }),
     listInaccessibleDatabases: vi.fn(async () => []),
     listTables: vi.fn(async () => [{ name: database === "audit" ? "log" : "users", schema: null }]),
     listViews: vi.fn(async () => []),
@@ -153,6 +156,40 @@ describe("secondary connections in the entity tree", () => {
     expect(await store.dispatch("connectionTree/open", 7)).toBe(true)
     expect(received.filter((r) => r.name === "conn/create")).toHaveLength(1)
     expect(connectionOf(7).status).toBe("connected")
+  })
+
+  it("a connect that fails after the server is created closes the server", async () => {
+    const failing = fakeServer(C.name, { failListDatabases: new Error("permission denied to list databases") })
+
+    expect(await store.dispatch("connectionTree/open", 7)).toBe(false)
+
+    expect(connectionOf(7).status).toBe("error")
+    expect(connectionOf(7).error).toMatch(/permission denied/)
+    expect(received.filter((r) => r.name === "conn/disconnect" || r.name === "conn/clearConnection").map((r) => [r.name, r.sId])).toEqual([
+      ["conn/disconnect", C_KEY],
+      ["conn/clearConnection", C_KEY],
+    ])
+    expect(failing.end).toHaveBeenCalledTimes(1)
+    expect(state(C_KEY).server).toBeNull()
+
+    // a retry creates one server, with none left behind from the failed attempt
+    fakeServer(C.name)
+    received = []
+    expect(await store.dispatch("connectionTree/open", 7)).toBe(true)
+    expect(received.filter((r) => r.name === "conn/create")).toHaveLength(1)
+  })
+
+  it("window disconnect also closes a saved connection in error", async () => {
+    fakeServer(C.name, { failConnect: new Error("connection refused") })
+    await store.dispatch("connectionTree/open", 7)
+    expect(connectionOf(7).status).toBe("error")
+    received = []
+
+    await store.dispatch("disconnect")
+
+    const disconnects = received.filter((r) => r.name === "conn/disconnect").map((r) => r.sId)
+    expect(disconnects).toEqual([C_KEY, W1])
+    expect(store.state["connectionTree"].connections).toEqual({})
   })
 
   it("expanding a secondary database lists it in the child session", async () => {

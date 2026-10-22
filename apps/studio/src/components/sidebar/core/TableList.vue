@@ -254,9 +254,11 @@
         const loadedOf = (entities: Record<string, any>, skip: string | null) => Object.entries(entities ?? {})
           .filter(([name, loaded]: [string, any]) => name !== skip && loaded.status === 'loaded')
           .map(([, loaded]: [string, any]) => [...loaded.tables, ...loaded.routines])
-        // saved connections opened from the tree count too, every loaded database of each
-        const secondary = Object.values(this.$store.state.connectionTree?.connections ?? {})
-          .flatMap((connection: any) => loadedOf(connection.databaseEntities, null))
+        // saved connections the tree lists count too, every loaded database of each
+        const connections = this.$store.state.connectionTree?.connections ?? {}
+        const listed = this.$bksConfig.security?.lockMode !== 'pin' ? this.$store.getters['connectionTree/listed'] ?? [] : []
+        const secondary = listed
+          .flatMap((config: any) => loadedOf(connections[config.id]?.databaseEntities, null))
         return [...loadedOf(this.databaseEntities, this.database), ...secondary]
       },
       totalEntities() {

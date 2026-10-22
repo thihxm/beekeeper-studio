@@ -30,7 +30,7 @@ describe("a tab on a saved connection", () => {
     const wrapper = mount(TabWithTable, {
       localVue,
       store,
-      propsData: { tab: { id: 3, tabType: "table", tableName: "users", targetConnectionId: 42, databaseName: "shop" } },
+      propsData: { tab: { id: 3, tabType: "table", tableName: "users", targetConnectionId: 42, databaseName: "shop" }, active: true },
     });
     await Vue.nextTick();
 

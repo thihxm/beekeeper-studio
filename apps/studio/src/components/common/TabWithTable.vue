@@ -63,12 +63,15 @@ import { findTable } from '@/common/transport/TransportOpenTab'
 const log = rawLog.scope('TabWithTable')
 
 export default Vue.extend({
-  props: ['tab'],
+  props: ['tab', 'active'],
   computed: {
     ...mapState(['tablesInitialLoaded', 'database', 'databaseEntities', 'inaccessibleDatabases']),
     /** the saved connection opened from the tree the tab runs on, or null for the window's */
     targetConnectionId(): number | null {
       return this.tab?.targetConnectionId ?? null
+    },
+    activeTarget(): number | null {
+      return this.active ? this.targetConnectionId : null
     },
     secondary() {
       if (this.targetConnectionId == null) return null
@@ -117,8 +120,8 @@ export default Vue.extend({
         if (database && !this.locked) this.$store.dispatch('loadDatabaseEntities', { database })
       }
     },
-    // a tab restored on a saved connection connects it, then loads its database
-    targetConnectionId: {
+    // a tab on a saved connection connects it once active, then loads its database
+    activeTarget: {
       immediate: true,
       async handler(id: number | null) {
         if (id == null || this.missingConnection) return

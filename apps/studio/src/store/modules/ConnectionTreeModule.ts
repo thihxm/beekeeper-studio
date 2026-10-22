@@ -218,8 +218,10 @@ export const ConnectionTreeModule: Module<State, RootState> = {
         return false;
       }
       const session = sessionFor(id, false);
+      let created = false;
       try {
         await Vue.prototype.$util.send("conn/create", { config, osUser: context.rootState.username, sId: session.sId });
+        created = true;
         const client = new ElectronUtilityConnectionClient().forConnection(session);
         const supportedFeatures = await client.supportedFeatures();
         const defaultSchema = await client.defaultSchema();
@@ -246,6 +248,14 @@ export const ConnectionTreeModule: Module<State, RootState> = {
         });
       } catch (e) {
         log.error(`Connecting saved connection ${id} failed`, e);
+        if (created) {
+          try {
+            await Vue.prototype.$util.send("conn/disconnect", { sId: session.sId });
+            await Vue.prototype.$util.send("conn/clearConnection", { sId: session.sId });
+          } catch (closeError) {
+            log.error(`Closing saved connection ${id} after a failed connect failed`, closeError);
+          }
+        }
         context.commit("update", { id, changes: { status: "error", error: e.message } });
         return false;
       }
@@ -312,7 +322,7 @@ export const ConnectionTreeModule: Module<State, RootState> = {
     /** Closes every secondary connection, before the window's own goes */
     async disconnectAll(context) {
       const open = Object.entries(context.state.connections)
-        .filter(([, c]) => c.status === "connected" || c.status === "connecting")
+        .filter(([, c]) => c.status !== "idle")
         .map(([id]) => Number(id));
       for (const id of open) await context.dispatch("disconnect", id);
       context.commit("clear");

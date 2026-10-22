@@ -44,6 +44,7 @@
         }}</span>
       </span>
       <span
+        v-if="connectionId == null"
         class="actions"
         :class="{ pinned: pinned }"
       >
@@ -111,7 +112,7 @@ import Vue from "vue";
 import { RoutineTypeNames } from "@/lib/db/models";
 
 export default Vue.extend({
-  props: ["routine", "pinned", "draggable", "level", "expanded"],
+  props: ["routine", "connectionId", "pinned", "draggable", "level", "expanded"],
   data() {
     return {
       selected: false,
