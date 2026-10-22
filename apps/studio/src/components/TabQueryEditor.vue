@@ -724,6 +724,11 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       busyOnConnection() {
         return { connectionId: this.tab?.targetConnectionId ?? null, busy: this.hasActiveTransaction || this.isManualCommit }
       },
+      activeTarget() {
+        const id = this.tab?.targetConnectionId
+        if (!this.active || id == null) return null
+        return { id, database: this.tab.databaseName ?? null }
+      },
       ...mapState(['storeInitialized']),
       ...mapState('data/queries', {'savedQueries': 'items'}),
       ...mapState('data/queryFolders', { queryFolders: 'items' }),
@@ -1166,16 +1171,20 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       // autocomplete needs the entities of the tab's database
       'tab.databaseName': {
         immediate: true,
-        async handler(database: string | null) {
-          const id = this.tab?.targetConnectionId
-          if (id != null) {
-            if (await this.$store.dispatch('connectionTree/open', id)) {
-              this.$store.dispatch('connectionTree/loadDatabase', { id, database })
-            }
-            return
-          }
+        handler(database: string | null) {
+          if (this.tab?.targetConnectionId != null) return
           if (database != null && database !== this.$store.state.database) {
             this.$store.dispatch('loadDatabaseEntities', { database })
+          }
+        }
+      },
+      // a tab on a saved connection connects it once active, then loads its database
+      activeTarget: {
+        immediate: true,
+        async handler(target: { id: number, database: string | null } | null) {
+          if (!target) return
+          if (await this.$store.dispatch('connectionTree/open', target.id)) {
+            this.$store.dispatch('connectionTree/loadDatabase', target)
           }
         }
       },

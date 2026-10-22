@@ -16,7 +16,7 @@ localVue.mixin(AppEventMixin);
 
 const table = (name: string, schema = "public") => ({ name, schema, entityType: "table", columns: [] });
 
-function mountTableList(hidden: any[], secondary: Record<number, any> | null = null) {
+function mountTableList(hidden: any[], secondary: Record<number, any> | null = null, listed: number[] = [], lockMode: string | null = null) {
   const log = table("log", "audit");
   const store = new Vuex.Store({
     state: {
@@ -45,6 +45,7 @@ function mountTableList(hidden: any[], secondary: Record<number, any> | null = n
       "hideEntities/totalEntities": () => hidden.length,
       "hideEntities/databaseEntities": () => hidden.map((name) => (name === "log" ? log : name)),
       "hideEntities/databaseSchemas": () => [],
+      "connectionTree/listed": () => listed.map((id) => ({ id })),
     },
   });
   (window as any).platformInfo = { ...(window as any).platformInfo, isDevelopment: false };
@@ -52,7 +53,7 @@ function mountTableList(hidden: any[], secondary: Record<number, any> | null = n
     localVue,
     store,
     stubs: { portal: { template: "<div><slot /></div>" } },
-    mocks: { $bksConfig: { ui: { tableList: { itemHeight: 20 } } } },
+    mocks: { $bksConfig: { ui: { tableList: { itemHeight: 20 } }, security: { lockMode } } },
   });
 }
 
@@ -76,6 +77,20 @@ describe("TableList entities badge while filtering", () => {
         },
       },
     };
-    expect(badge(mountTableList([], secondary))).toBe("3 / 7");
+    expect(badge(mountTableList([], secondary, [7]))).toBe("3 / 7");
+  });
+
+  it("badge leaves out secondary connections the tree does not list", () => {
+    const secondary = {
+      7: {
+        status: "connected",
+        database: "shop",
+        databaseEntities: { shop: { status: "loaded", tables: [table("users"), table("orders")], routines: [] } },
+      },
+    };
+    // scope off, or 7 unpinned in pinned scope: 7 stays connected but is not listed
+    expect(badge(mountTableList([], secondary, []))).toBe("2 / 5");
+    // PIN lock mode hides the connection level
+    expect(badge(mountTableList([], secondary, [7], "pin"))).toBe("2 / 5");
   });
 });
