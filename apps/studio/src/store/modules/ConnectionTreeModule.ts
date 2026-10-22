@@ -51,6 +51,9 @@ const emptyConnection = (): SecondaryConnection => ({
 
 // connects in flight, so two expands of one node connect once
 const pending = new Map<number, Promise<boolean>>();
+// bumped by every disconnect, so a connect or load that outlives one stops
+const generations = new Map<number, number>();
+const generation = (id: number) => generations.get(id) ?? 0;
 let dispatchOpen: (id: number) => Promise<boolean> = async () => false;
 
 /** Gives the clients the module hands out a way to connect on first use */
@@ -71,6 +74,16 @@ function sessionFor(id: number, open = true): ConnectionSession {
 /** A client on secondary connection `id`; `open` connects it on first use */
 export function secondaryClient(id: number, open = true): ElectronUtilityConnectionClient {
   return new ElectronUtilityConnectionClient().forConnection(sessionFor(id, open));
+}
+
+/** The key the utility caches a database's client under, `ns::db` for SurrealDB */
+function databaseKey(config: IConnection | undefined, database: string): string {
+  return config?.connectionType === "surrealdb" ? `${config.surrealDbOptions?.namespace}::${database}` : database;
+}
+
+async function closeSession(sId: string) {
+  await Vue.prototype.$util.send("conn/disconnect", { sId });
+  await Vue.prototype.$util.send("conn/clearConnection", { sId });
 }
 
 function typed(tables: TableOrView[], entityType: TableOrView["entityType"]) {
@@ -113,7 +126,9 @@ export const ConnectionTreeModule: Module<State, RootState> = {
       return (id: number): ConnectionContext => {
         const node: SecondaryConnection = getters.connection(id);
         const saved: IConnection | undefined = getters.savedConnection(id);
-        const config = node.config ?? saved ?? null;
+        const config = node.config && saved ?
+          { ...node.config, name: saved.name, labelColor: saved.labelColor } :
+          node.config ?? saved ?? null;
         const connectionType = config?.connectionType ?? null;
         const dialect = connectionType ? dialectFor(connectionType) : null;
         return {
@@ -131,12 +146,12 @@ export const ConnectionTreeModule: Module<State, RootState> = {
       };
     },
     /** The client for `database` of secondary connection `id`; its default database for null */
-    clientFor(state) {
+    clientFor(state, getters) {
       return (id: number, database?: string | null): ElectronUtilityConnectionClient => {
         const client = secondaryClient(id);
         const node = state.connections[id];
         if (database == null || database === node?.database) return client;
-        return client.forDatabase(database);
+        return client.forDatabase(databaseKey(node?.config ?? getters.savedConnection(id), database));
       };
     },
     tablesFor(state) {
@@ -205,7 +220,10 @@ export const ConnectionTreeModule: Module<State, RootState> = {
       }
     },
     async connect(context, id: number): Promise<boolean> {
+      const started = generation(id);
+      const stale = () => generation(id) !== started;
       if (!context.state.savedLoaded) await context.dispatch("loadSaved");
+      if (stale()) return false;
       const saved: IConnection = context.getters.savedConnection(id);
       if (!saved) {
         context.commit("update", { id, changes: { status: "error", error: "Saved connection not found" } });
@@ -213,6 +231,7 @@ export const ConnectionTreeModule: Module<State, RootState> = {
       }
       context.commit("update", { id, changes: { ...emptyConnection(), status: "connecting" } });
       const config = await resolveEphemeralValues(saved);
+      if (stale()) return false;
       if (!config) {
         // the prompt was cancelled
         context.commit("update", { id, changes: { status: "idle" } });
@@ -233,6 +252,7 @@ export const ConnectionTreeModule: Module<State, RootState> = {
         } catch (e) {
           log.warn("Could not list inaccessible databases", e);
         }
+        if (stale()) throw new Error("Disconnected while connecting");
         context.commit("update", {
           id,
           changes: {
@@ -251,13 +271,12 @@ export const ConnectionTreeModule: Module<State, RootState> = {
         log.error(`Connecting saved connection ${id} failed`, e);
         if (created) {
           try {
-            await Vue.prototype.$util.send("conn/disconnect", { sId: session.sId });
-            await Vue.prototype.$util.send("conn/clearConnection", { sId: session.sId });
+            await closeSession(session.sId);
           } catch (closeError) {
             log.error(`Closing saved connection ${id} after a failed connect failed`, closeError);
           }
         }
-        context.commit("update", { id, changes: { status: "error", error: e.message } });
+        if (!stale()) context.commit("update", { id, changes: { status: "error", error: e.message } });
         return false;
       }
       await context.dispatch("loadDatabase", { id, database: config.defaultDatabase || null });
@@ -270,10 +289,11 @@ export const ConnectionTreeModule: Module<State, RootState> = {
       const key = database ?? node.database;
       const current = node.databaseEntities[key];
       if (!force && (current?.status === "loading" || current?.status === "loaded")) return;
+      const started = generation(id);
 
       context.commit("databaseEntities", { id, database: key, entities: { tables: [], routines: [], status: "loading" } });
       const client = new ElectronUtilityConnectionClient().forConnection(sessionFor(id, false));
-      const connection = database == null || database === node.database ? client : client.forDatabase(database);
+      const connection = database == null || database === node.database ? client : client.forDatabase(databaseKey(node.config, database));
       try {
         const [tables, views, materialized] = await Promise.all([
           connection.listTables(null),
@@ -289,9 +309,11 @@ export const ConnectionTreeModule: Module<State, RootState> = {
         } catch (e) {
           log.error(`Loading routines of ${key} on saved connection ${id} failed`, e);
         }
+        if (generation(id) !== started) return;
         context.commit("databaseEntities", { id, database: key, entities: { tables: entities, routines: Object.freeze(routines) as Routine[], status: "loaded" } });
       } catch (e) {
         log.error(`Loading ${key} on saved connection ${id} failed`, e);
+        if (generation(id) !== started) return;
         if (e?.code === DATABASE_ACCESS_DENIED) {
           context.commit("update", { id, changes: { inaccessibleDatabases: _.uniq([...context.state.connections[id].inaccessibleDatabases, key]) } });
         }
@@ -302,8 +324,11 @@ export const ConnectionTreeModule: Module<State, RootState> = {
     async refresh(context, id: number) {
       const node = context.state.connections[id];
       if (node?.status !== "connected") return;
+      const started = generation(id);
       const client = new ElectronUtilityConnectionClient().forConnection(sessionFor(id, false));
-      context.commit("update", { id, changes: { databaseList: await client.listDatabases() } });
+      const databaseList = await client.listDatabases();
+      if (generation(id) !== started) return;
+      context.commit("update", { id, changes: { databaseList } });
       const loaded = Object.entries(node.databaseEntities).filter(([, e]) => e.status === "loaded").map(([name]) => name);
       for (const database of loaded) {
         await context.dispatch("loadDatabase", { id, database: database === node.database ? null : database, force: true });
@@ -311,10 +336,9 @@ export const ConnectionTreeModule: Module<State, RootState> = {
     },
     /** Closes secondary connection `id`; tabs bound to it reconnect on their next call */
     async disconnect(context, id: number) {
-      const { sId } = sessionFor(id, false);
+      generations.set(id, generation(id) + 1);
       try {
-        await Vue.prototype.$util.send("conn/disconnect", { sId });
-        await Vue.prototype.$util.send("conn/clearConnection", { sId });
+        await closeSession(sessionFor(id, false).sId);
       } catch (e) {
         log.error(`Disconnecting saved connection ${id} failed`, e);
       }
@@ -322,9 +346,10 @@ export const ConnectionTreeModule: Module<State, RootState> = {
     },
     /** Closes every secondary connection, before the window's own goes */
     async disconnectAll(context) {
-      const open = Object.entries(context.state.connections)
-        .filter(([, c]) => c.status !== "idle")
-        .map(([id]) => Number(id));
+      const open = _.uniq([
+        ...Object.entries(context.state.connections).filter(([, c]) => c.status !== "idle").map(([id]) => Number(id)),
+        ...Array.from(pending.keys()),
+      ]);
       for (const id of open) await context.dispatch("disconnect", id);
       context.commit("clear");
     },

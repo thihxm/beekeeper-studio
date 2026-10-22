@@ -32,15 +32,16 @@ export class ElectronUtilityConnectionClient implements IBasicDatabaseClient {
   }
 
   /** Sends to this client's session, without the database (`query/*` handlers) */
-  protected async sendToSession(handlerName: string, args: any = {}): Promise<any> {
+  protected async sendToSession(handlerName: string, args: any = {}, open = true): Promise<any> {
     if (this.session == null) return await Vue.prototype.$util.send(handlerName, args);
-    await this.session.open?.();
+    if (open) await this.session.open?.();
     return await Vue.prototype.$util.send(handlerName, { ...args, sId: this.session.sId });
   }
 
-  protected async send(handlerName: string, args: any = {}): Promise<any> {
-    if (this.database == null) return await this.sendToSession(handlerName, args);
-    return await this.sendToSession(handlerName, { ...args, database: this.database });
+  /** `open` false for teardown calls, which never connect a closed saved connection */
+  protected async send(handlerName: string, args: any = {}, open = true): Promise<any> {
+    if (this.database == null) return await this.sendToSession(handlerName, args, open);
+    return await this.sendToSession(handlerName, { ...args, database: this.database }, open);
   }
 
   async supportedFeatures(): Promise<SupportedFeatures> {
@@ -130,14 +131,14 @@ export class ElectronUtilityConnectionClient implements IBasicDatabaseClient {
         return await this.sendToSession('query/execute', { queryId: id })
       },
       cancel: async () => {
-        return await this.sendToSession('query/cancel', { queryId: id })
+        return await this.sendToSession('query/cancel', { queryId: id }, false)
       }
     }
   }
 
   /** Keeps the tab's open transaction from timing out */
   async resetTransactionTimeout(tabId: number): Promise<void> {
-    return await this.sendToSession('conn/resetTransactionTimeout', { tabId });
+    return await this.sendToSession('conn/resetTransactionTimeout', { tabId }, false);
   }
 
   async getResultEditData(queryText: string, fields: FieldDescriptor[]): Promise<FieldEditData[]> {
@@ -370,7 +371,7 @@ export class ElectronUtilityConnectionClient implements IBasicDatabaseClient {
   }
 
   async releaseConnection(tabId: number) {
-    return await this.send('conn/releaseConnection', { tabId });
+    return await this.send('conn/releaseConnection', { tabId }, false);
   }
 
   async startTransaction(tabId: number) {

@@ -18,6 +18,7 @@ import { FakeUtilityProcess } from "@tests/vitest/lib/FakeUtilityProcess"
 import { TestOrmConnection } from "@tests/lib/TestOrmConnection"
 import { AppDbHandlers } from "@/handlers/appDbHandlers"
 import { SnowflakeAuthType } from "@/lib/db/types"
+import { secondaryClient } from "@/store/modules/ConnectionTreeModule"
 
 const W1 = "w1"
 const C_KEY = "w1::connection::7"
@@ -264,6 +265,59 @@ describe("secondary connections in the entity tree", () => {
       expect(store.state["connectionTree"].connections).toEqual({})
     })
   }
+
+  for (const action of ["connectionTree/disconnect", "disconnect"]) {
+    it(`a disconnect during connect closes the session it created (${action})`, async () => {
+      let release: () => void
+      const slow = fakeServer(C.name, { slowConnect: new Promise<void>((r) => (release = r)) })
+
+      const opening = store.dispatch("connectionTree/open", 7)
+      await vi.waitFor(() => expect(slow.createConnection).toHaveBeenCalled())
+      await store.dispatch(action, 7)
+      release()
+
+      expect(await opening).toBe(false)
+      expect(slow.end).toHaveBeenCalledTimes(1)
+      expect(state(C_KEY).server).toBeNull()
+      expect(store.state["connectionTree"].connections[7]).toBeUndefined()
+      expect(received.filter((r) => r.name === "conn/listTables")).toHaveLength(0)
+    })
+  }
+
+  it("surrealdb secondary databases are keyed by the connection namespace", async () => {
+    const config = { id: 15, name: "surreal", connectionType: "surrealdb", defaultDatabase: "main", surrealDbOptions: { namespace: "acme" } }
+    store.commit("connectionTree/update", { id: 15, changes: { status: "connected", config, database: "main", connectionType: "surrealdb" } })
+
+    expect(store.getters["connectionTree/clientFor"](15, "billing").database).toBe("acme::billing")
+    expect(store.getters["connectionTree/clientFor"](15, "main").database).toBeNull()
+
+    received = []
+    await store.dispatch("connectionTree/loadDatabase", { id: 15, database: "billing" })
+    expect(received.filter((r) => r.name === "conn/listTables").map((r) => r.database)).toEqual(["acme::billing"])
+  })
+
+  it("a recolored or renamed saved connection updates its connected context", async () => {
+    fakeServer(C.name)
+    await store.dispatch("connectionTree/open", 7)
+    const saved = store.state["connectionTree"].savedConnections
+    store.commit("connectionTree/savedConnections", saved.map((c: any) => c.id === 7 ? { ...c, name: "shop-renamed", labelColor: "green", defaultDatabase: "other" } : c))
+
+    const config = store.getters["connectionTree/context"](7).config
+    expect(config.labelColor).toBe("green")
+    expect(config.name).toBe("shop-renamed")
+    // connection parameters stay the ones it connected with
+    expect(config.defaultDatabase).toBe("shop")
+  })
+
+  it("releasing a tab connection never connects a closed saved connection", async () => {
+    fakeServer(C.name)
+    received = []
+
+    await secondaryClient(7).releaseConnection(1).catch(() => undefined)
+
+    expect(received.filter((r) => r.name === "conn/create")).toHaveLength(0)
+    expect(connectionOf(7).status).toBe("idle")
+  })
 
   it("snowflake MFA prompt cancel leaves the connection closed", async () => {
     fakeServer(SNOW.name)
