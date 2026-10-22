@@ -11,7 +11,8 @@ import { mapGetters } from 'vuex'
 export default {
   props: ['mode', 'active'],
   computed: {
-    ...mapGetters(['connectionColor']),
+    // the active tab's connection, which may be a saved connection opened from the tree
+    ...mapGetters({ connectionColor: 'activeConnectionColor' }),
     classes() {
         const result = {
           'statusbar': true

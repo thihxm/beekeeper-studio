@@ -453,8 +453,28 @@ export default Vue.extend({
       let item = this.items.find((i: Item) => i.key === key);
       if (!item) {
         // an entity of a database that isn't loaded yet: open it, and reveal once it loads
+        if (key.startsWith("connection::")) {
+          // `connection::<id>::<database>::<entity>`, a saved connection opened from the tree
+          const [, id, database] = key.split("::");
+          const connectionItem = this.items.find((i: Item) => i.type === "connection" && String(i.connectionId) === id);
+          if (!connectionItem) return;
+          const secondaryDatabase = this.items.find((i: Item) =>
+            i.type === "database" && String(i.connectionId) === id && i.entity === database);
+          if (secondaryDatabase?.locked) return;
+          connectionItem.expanded = true;
+          this.pendingReveal = key;
+          if (secondaryDatabase) {
+            secondaryDatabase.expanded = true;
+            this.loadDatabase(secondaryDatabase);
+          } else if (connectionItem.status !== "connected") {
+            this.openConnection(connectionItem);
+          }
+          this.generateDisplayItems();
+          return;
+        }
         const database = key.includes("::") ? key.split("::")[0] : null;
-        const databaseItem = database && this.items.find((i: Item) => i.type === "database" && i.entity === database);
+        const databaseItem = database && this.items.find((i: Item) =>
+          i.type === "database" && i.connectionId == null && i.entity === database);
         if (!databaseItem || databaseItem.locked) return;
         databaseItem.expanded = true;
         this.pendingReveal = key;
@@ -517,7 +537,7 @@ export default Vue.extend({
     loadColumns(item: TableItem) {
       item.loadingColumns = true;
       this.$nextTick(() => {
-        this.$store.dispatch("updateDatabaseTableColumns", { database: item.database, table: item.entity }).finally(() => {
+        this.$store.dispatch("updateDatabaseTableColumns", { database: item.database, table: item.entity, targetConnectionId: item.connectionId ?? null }).finally(() => {
           item.loadingColumns = false;
         });
       });

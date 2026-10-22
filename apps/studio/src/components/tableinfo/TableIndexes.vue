@@ -117,7 +117,6 @@ import { AppEvent } from '@/common/AppEvent'
 import ErrorAlert from '../common/ErrorAlert.vue'
 import TableInfoToolbar from './TableInfoToolbar.vue'
 import { TableIndex } from '@/lib/db/models'
-import { mapGetters, mapState } from 'vuex'
 import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 const log = rawLog.scope('TableIndexVue')
 import { escapeHtml } from '@shared/lib/tabulator'
@@ -161,8 +160,6 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapState(['connectionType', 'usedConfig']),
-    ...mapGetters(['dialect', 'dialectData']),
     hasSql() {
       // FIXME (@day): no per db testing
       return this.connectionType !== 'mongodb';

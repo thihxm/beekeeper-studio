@@ -1,5 +1,5 @@
 import { Module, RangeComponent, Tabulator } from "tabulator-tables";
-import { buildCopyText, extractRanges } from "@/lib/menu/tableMenu";
+import { buildCopyText, CopyConnection, extractRanges } from "@/lib/menu/tableMenu";
 import { ElectronPlugin } from "@/lib/NativeWrapper";
 
 export type CopyRangesOptions = {
@@ -7,6 +7,7 @@ export type CopyRangesOptions = {
   table?: string;
   schema?: string;
   escapeString?: (s: string, quote?: boolean) => string;
+  connection?: CopyConnection;
 };
 
 /**

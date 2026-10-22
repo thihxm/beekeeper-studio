@@ -135,6 +135,11 @@ export class ElectronUtilityConnectionClient implements IBasicDatabaseClient {
     }
   }
 
+  /** Keeps the tab's open transaction from timing out */
+  async resetTransactionTimeout(tabId: number): Promise<void> {
+    return await this.sendToSession('conn/resetTransactionTimeout', { tabId });
+  }
+
   async getResultEditData(queryText: string, fields: FieldDescriptor[]): Promise<FieldEditData[]> {
     return await this.send('conn/getResultEditData', { queryText, fields });
   }

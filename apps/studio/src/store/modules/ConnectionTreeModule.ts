@@ -1,7 +1,9 @@
 import { Module, Store } from "vuex";
 import Vue from "vue";
 import _ from "lodash";
-import { State as RootState, DatabaseEntities, resolveEphemeralValues } from "../index";
+import { State as RootState, DatabaseEntities, ConnectionContext, resolveEphemeralValues } from "../index";
+import { getDialectData } from "@shared/lib/dialects";
+import { dialectFor } from "@shared/lib/dialects/models";
 import { IConnection } from "@/common/interfaces/IConnection";
 import { LocalWorkspace } from "@/common/interfaces/IWorkspace";
 import { childSessionKey } from "@/common/connectionSession";
@@ -34,6 +36,7 @@ export interface SecondaryConnection {
 interface State {
   /** every saved connection of the window's workspace */
   savedConnections: IConnection[],
+  savedLoaded: boolean,
   connections: Record<number, SecondaryConnection>,
   /** tabs with an open transaction or reserved connection, and the saved connection each runs on */
   busyTabs: Record<number, number>,
@@ -79,6 +82,7 @@ export const ConnectionTreeModule: Module<State, RootState> = {
   namespaced: true,
   state: () => ({
     savedConnections: [],
+    savedLoaded: false,
     connections: {},
     busyTabs: {},
   }),
@@ -103,6 +107,28 @@ export const ConnectionTreeModule: Module<State, RootState> = {
     },
     savedConnection(state) {
       return (id: number): IConnection | undefined => state.savedConnections.find((c) => c.id === id);
+    },
+    /** `connectionContext` of a saved connection opened from the tree */
+    context(state, getters) {
+      return (id: number): ConnectionContext => {
+        const node: SecondaryConnection = getters.connection(id);
+        const saved: IConnection | undefined = getters.savedConnection(id);
+        const config = node.config ?? saved ?? null;
+        const connectionType = config?.connectionType ?? null;
+        const dialect = connectionType ? dialectFor(connectionType) : null;
+        return {
+          connectionId: id,
+          config,
+          connectionType,
+          dialect,
+          dialectData: getDialectData(dialect),
+          supportedFeatures: node.supportedFeatures ?? null,
+          defaultSchema: node.defaultSchema ?? null,
+          database: node.status === "connected" ? node.database : config?.defaultDatabase || null,
+          databaseList: node.databaseList,
+          missing: state.savedLoaded && !saved,
+        };
+      };
     },
     /** The client for `database` of secondary connection `id`; its default database for null */
     clientFor(state) {
@@ -129,6 +155,7 @@ export const ConnectionTreeModule: Module<State, RootState> = {
   mutations: {
     savedConnections(state, connections: IConnection[]) {
       state.savedConnections = connections;
+      state.savedLoaded = true;
     },
     update(state, { id, changes }: { id: number, changes: Partial<SecondaryConnection> }) {
       // a new object every time, so watchers of the whole record are notified

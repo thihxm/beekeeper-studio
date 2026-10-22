@@ -90,54 +90,54 @@ Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "
 
 ### S3 - tabs on a secondary connection · 26 files · 431 KB · ~108k
 
-**C23** - Migration `20261021_add_tab_target_connection_id` is in the app's migration list, and run against a `tabs` table without the column it adds a nullable `targetConnectionId`: an `OpenTab` saved with `targetConnectionId = 7` reads back 7, one saved without it reads back `null` (door 2)
+**C23** - Migration `20261021_add_tab_target_connection_id` is in the app's migration list, and run against a `tabs` table without the column it adds a nullable `targetConnectionId`: an `OpenTab` saved with `targetConnectionId = 7` reads back 7, one saved without it reads back `null` (door 2) ✅
 Proof: `VU tests/vitest/unit/common/appdb/tabTargetConnection.spec.ts -t "migration adds a nullable target connection to tabs"`
 
-**C24** - "View Data" on `C`'s `shop.public.users` adds a tab with `targetConnectionId = 7`, `databaseName = "shop"`, and its data load sends `conn/selectTop` under `sId === "w1::connection::7"` with no `database` key; "View Structure" on `C`'s `audit` table sends its column load with `database === "audit"` (AC 21)
+**C24** - "View Data" on `C`'s `shop.public.users` adds a tab with `targetConnectionId = 7`, `databaseName = "shop"`, and its data load sends `conn/selectTop` under `sId === "w1::connection::7"` with no `database` key; "View Structure" on `C`'s `audit` table sends its column load with `database === "audit"` (AC 21) ✅
 Proof: `VU tests/vitest/unit/store/secondaryConnectionTabs.spec.ts -t "entity tabs persist and run on the secondary connection"`
 
-**C25** - "New query" on node `C` opens a query tab with `targetConnectionId = 7` and `databaseName = "shop"`; on `C`'s `audit` node, `databaseName = "audit"`; running it sends `conn/query`, `query/execute` and (on cancel) `query/cancel` all with `sId === "w1::connection::7"` (AC 22)
+**C25** - "New query" on node `C` opens a query tab with `targetConnectionId = 7` and `databaseName = "shop"`; on `C`'s `audit` node, `databaseName = "audit"`; running it sends `conn/query`, `query/execute` and (on cancel) `query/cancel` all with `sId === "w1::connection::7"` (AC 22) ✅
 Proof: `VU tests/vitest/unit/store/secondaryConnectionTabs.spec.ts -t "new query runs and cancels on the secondary connection"`
 
-**C26** - A tab with `targetConnectionId = 42`, which no saved connection of the workspace has, renders `Saved connection not found` and sends no `conn/*` message (AC 23)
+**C26** - A tab with `targetConnectionId = 42`, which no saved connection of the workspace has, renders `Saved connection not found` and sends no `conn/*` message (AC 23) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionTab.spec.ts -t "tab on a deleted saved connection shows not found"`
 
-**C27** - A restored tab with `targetConnectionId = 7` and no open session for 7: its first `listTableColumns` call sends `conn/create` for 7 under `w1::connection::7` first, then the call under the same `sId`, and resolves with its result (AC 24)
+**C27** - A restored tab with `targetConnectionId = 7` and no open session for 7: its first `listTableColumns` call sends `conn/create` for 7 under `w1::connection::7` first, then the call under the same `sId`, and resolves with its result (AC 24) ✅
 Proof: `VU tests/vitest/unit/store/secondaryConnectionTabs.spec.ts -t "restored tab connects its connection on first use"`
 
-**C28** - `matches()` returns `false` for two `table` tabs (and two `query` tabs) equal except `targetConnectionId` `null` vs `7`, and `true` when both are `7` (AC 25, door 2)
+**C28** - `matches()` returns `false` for two `table` tabs (and two `query` tabs) equal except `targetConnectionId` `null` vs `7`, and `true` when both are `7` (AC 25, door 2) ✅
 Proof: `VU tests/vitest/unit/transport/TransportOpenTab.spec.ts -t "target connection distinguishes tabs"`
 
-**C29** - Inside a tab bound to `C` (MySQL) in a Postgres window, every one of the 18 tab-rendered files that reads window state resolves `C`'s value instead: `dialect` `mysql`, `dialectData` of mysql, `connectionType` `mysql`, `supportedFeatures` of `C`, `defaultSchema` of `C`, `usedConfig` of `C`, the database list of `C`, and `tablesFor` from `C`'s entities. The test is table-driven over the 18 files and the reads each one makes (AC 26)
+**C29** - Inside a tab bound to `C` (MySQL) in a Postgres window, every one of the 18 tab-rendered files that reads window state resolves `C`'s value instead: `dialect` `mysql`, `dialectData` of mysql, `connectionType` `mysql`, `supportedFeatures` of `C`, `defaultSchema` of `C`, `usedConfig` of `C`, the database list of `C`, and `tablesFor` from `C`'s entities. The test is table-driven over the 18 files and the reads each one makes (AC 26) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "tab components read the secondary connection"`
 
-**C30** - For a tab bound to `C`, the copy-as-SQL and copy-as-IN-list actions send `conn/getInsertQuery` / `conn/listTableColumns`, and the query tab's transaction keep-alive sends `conn/resetTransactionTimeout`, each with `sId === "w1::connection::7"` (AC 26)
+**C30** - For a tab bound to `C`, the copy-as-SQL and copy-as-IN-list actions send `conn/getInsertQuery` / `conn/listTableColumns`, and the query tab's transaction keep-alive sends `conn/resetTransactionTimeout`, each with `sId === "w1::connection::7"` (AC 26) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "direct sends follow the tab connection"`
 
-**C31** - With `C.readOnlyMode = true` and the window's `false`, a tab bound to `C` disables the same controls as a read-only window: `TableTable`'s add-row and import actions, `QueryEditorStatusBar` result editing, `TableSchema`/`TableIndexes`/`TableRelations` edit controls; with `C.readOnlyMode = false` and the window's `true`, they are enabled (AC 27)
+**C31** - With `C.readOnlyMode = true` and the window's `false`, a tab bound to `C` disables the same controls as a read-only window: `TableTable`'s add-row and import actions, `QueryEditorStatusBar` result editing, `TableSchema`/`TableIndexes`/`TableRelations` edit controls; with `C.readOnlyMode = false` and the window's `true`, they are enabled (AC 27) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "read only follows the tab connection"`
 
-**C32** - A query tab bound to `C` shows `QueryDatabaseSelector` options `["audit", "shop"]`; choosing `audit` sets the tab's `databaseName` to `audit` and leaves `targetConnectionId` 7 and the window's `database` `a` unchanged (AC 28)
+**C32** - A query tab bound to `C` shows `QueryDatabaseSelector` options `["audit", "shop"]`; choosing `audit` sets the tab's `databaseName` to `audit` and leaves `targetConnectionId` 7 and the window's `database` `a` unchanged (AC 28) ✅
 Proof: `VU tests/vitest/unit/components/QueryDatabaseSelector.spec.ts -t "lists and changes databases of the tab connection"`
 
-**C33** - The header of a tab bound to `C` renders text `C`'s name next to the database name and an element with class `connection-label-color-blue`; a tab with `targetConnectionId = null` renders as before (AC 29)
+**C33** - The header of a tab bound to `C` renders text `C`'s name next to the database name and an element with class `connection-label-color-blue`; a tab with `targetConnectionId = null` renders as before (AC 29) ✅
 Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "secondary connection name and color in the tab header"`
 
-**C34** - A tab with `targetConnectionId = null` resolves the window client (`connectionFor(null)` returns the window's client object), the window's `dialect`, and its `databaseName` rules as before (AC 30)
+**C34** - A tab with `targetConnectionId = null` resolves the window client (`connectionFor(null)` returns the window's client object), the window's `dialect`, and its `databaseName` rules as before (AC 30) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "tabs without a target connection are unchanged"`
 
 **C35** - The context menu of an entity on `C` lists exactly View Data, View Structure, New query and Copy Name; database nodes of `C` list New query only; connection node `C` lists New query, Refresh and Disconnect. Export, import, backup, create, drop, truncate, duplicate, pin, hide and Set color are absent from all three (AC 31) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "secondary nodes offer only their actions"`
 
-**C36** - Activating a tab bound to `C` on `shop.public.users`, while the window's `a` also has `public.users`, commits a selection key starting with `connection::7::` that differs from every window item key, and the tree reveals `C`'s `users` item (AC 36)
+**C36** - Activating a tab bound to `C` on `shop.public.users`, while the window's `a` also has `public.users`, commits a selection key starting with `connection::7::` that differs from every window item key, and the tree reveals `C`'s `users` item (AC 36) ✅
 Proof: `VU tests/vitest/unit/components/revealActiveEntity.spec.ts -t "secondary connection tabs select their own connection item"`
 
 ### S4 - status bar follows the active tab's connection · 1 file · 1 KB · ~0.2k
 
-**C37** - With the window `red` and `C` `blue`: active tab bound to `C` → the status bar footer has class `blue` and not `red`; active tab with no target, and no active tab → class `red`; a target connection with `labelColor: "default"` → class `default` (AC 32, 33)
+**C37** - With the window `red` and `C` `blue`: active tab bound to `C` → the status bar footer has class `blue` and not `red`; active tab with no target, and no active tab → class `red`; a target connection with `labelColor: "default"` → class `default` (AC 32, 33) ✅
 Proof: `VU tests/vitest/unit/components/StatusBarConnectionColor.spec.ts -t "status bar color follows the active tab connection"`
 
-**C38** - Switching the active tab from a `C` tab to a window tab changes the footer class from `blue` to `red` on the next tick, without remounting (AC 34)
+**C38** - Switching the active tab from a `C` tab to a window tab changes the footer class from `blue` to `red` on the next tick, without remounting (AC 34) ✅
 Proof: `VU tests/vitest/unit/components/StatusBarConnectionColor.spec.ts -t "status bar color changes with the active tab"`
 
 ## Coverage

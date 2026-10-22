@@ -161,8 +161,7 @@
       }
     },
     computed: {
-      ...mapState(['usedConfig', 'defaultSchema', 'connectionType']),
-      ...mapGetters(['dialectData', 'dialect']),
+      // usedConfig, defaultSchema, connectionType, dialect and dialectData follow the tab's connection (TabDatabaseMixin)
       ...mapGetters('popupMenu', ['getExtraPopupMenu']),
       queryDialect() {
         return this.dialectData?.queryDialectOverride ?? this.dialect;
@@ -287,6 +286,7 @@
                 this.viewAsJsonMenuItem(),
                 { separator: true },
                 ...copyActionsMenu({
+                  connection: this.connection,
                   tabulator: cell.getTable(),
                   table: this.result.tableName || "mytable",
                   schema: this.result.schema,
@@ -298,6 +298,7 @@
             headerContextMenu: (_e, column) => {
               return [
                 ...copyActionsMenu({
+                  connection: this.connection,
                   tabulator: column.getTable(),
                   table: this.result.tableName || "mytable",
                   schema: this.result.schema,
@@ -457,6 +458,7 @@
             this.setAsNullMenuItem(ranges),
             { separator: true },
             ...copyActionsMenu({
+              connection: this.connection,
               tabulator: cell.getTable(),
               table: this.result.tableName,
               schema: this.defaultSchema,
@@ -478,6 +480,7 @@
         const columnMenu = (_e, column) => {
           return [
             ...copyActionsMenu({
+              connection: this.connection,
               tabulator: column.getTable(),
               table: this.result.tableName,
               schema: this.defaultSchema,

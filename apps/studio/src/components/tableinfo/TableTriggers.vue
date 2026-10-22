@@ -42,11 +42,11 @@ import {Tabulator, TabulatorFull} from 'tabulator-tables'
 import data_mutators from '../../mixins/data_mutators'
 import StatusBar from '../common/StatusBar.vue'
 import TableInfoToolbar from './TableInfoToolbar.vue'
-import { mapGetters, mapState } from 'vuex'
 import { SelectableCellMixin } from '@/mixins/selectableCell';
 import { StructureCopyMixin } from '@/mixins/structureCopy';
 import { StructureFilterMixin } from '@/mixins/structureFilter';
 import { copyCellMenu } from '@/lib/menu/tableMenu';
+import { TabDatabaseMixin } from '@/mixins/TabDatabase';
 
 
 export default {
@@ -54,7 +54,7 @@ export default {
     StatusBar,
     TableInfoToolbar,
   },
-  mixins: [data_mutators, SelectableCellMixin, StructureCopyMixin, StructureFilterMixin],
+  mixins: [data_mutators, SelectableCellMixin, StructureCopyMixin, StructureFilterMixin, TabDatabaseMixin],
   props: ["table", "tabId", "active", "properties"],
   data() {
     return {
@@ -63,8 +63,6 @@ export default {
     }
   },
   computed: {
-    ...mapState(['connectionType']),
-    ...mapGetters(['dialectData']),
     notice() {
       return this.dialectData.notices?.infoTriggers;
     },

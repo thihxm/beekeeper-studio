@@ -228,6 +228,7 @@ import humanizeDuration from 'humanize-duration';
 import Statusbar from '../common/StatusBar.vue';
 import { mapState, mapGetters } from 'vuex';
 import { AppEvent } from '@/common/AppEvent';
+import { TabDatabaseMixin } from '@/mixins/TabDatabase';
 import formatSeconds from "@/lib/time/formatSeconds";
 
 const shortEnglishHumanizer = humanizeDuration.humanizer({
@@ -247,6 +248,7 @@ const shortEnglishHumanizer = humanizeDuration.humanizer({
 });
 
 export default {
+  mixins: [TabDatabaseMixin],
   props: ['results', 'running', 'value', 'executeTime', 'wrapText', 'active', 'elapsedTime', 'editing', 'changesCount', 'changesString', 'resultEditable'],
   components: { Statusbar },
   data() {
@@ -279,9 +281,8 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['dialect', 'dialectData']),
+    // dialect, dialectData and usedConfig follow the tab's connection (TabDatabaseMixin)
     ...mapState('settings', ['settings']),
-    ...mapState(['usedConfig']),
     userKeymap: {
       get() {
         const value = this.settings?.keymap.value;

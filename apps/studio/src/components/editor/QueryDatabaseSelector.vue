@@ -31,16 +31,22 @@ export default Vue.extend({
     isManualCommit: { type: Boolean, default: false },
   },
   computed: {
+    /** the connection the tab runs on: the window's, or a saved connection opened from the tree */
+    connectionContext() {
+      const id = this.tab.targetConnectionId ?? null;
+      const getter = this.$store.getters.connectionContext;
+      return getter ? getter(id) : { database: this.$store.state.database, databaseList: this.$store.state.databaseList };
+    },
     /** the tab's database; a tab without one runs on the default database */
     database(): string | null {
-      return this.tab.databaseName ?? this.$store.state.database ?? null;
+      return this.tab.databaseName ?? this.connectionContext.database ?? null;
     },
     /** a transaction or a reserved (manual commit) connection is tied to one database */
     locked(): boolean {
       return this.hasActiveTransaction || this.isManualCommit;
     },
     options(): string[] {
-      const list = this.$store.state.databaseList as string[];
+      const list = (this.connectionContext.databaseList ?? []) as string[];
       if (this.database == null || list.includes(this.database)) return list;
       return [this.database, ...list];
     },
