@@ -1172,7 +1172,7 @@ export default Vue.extend({
     async initialize() {
       this.initialized = true
       this.resetPendingChanges()
-      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
+      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table, targetConnectionId: this.tab?.targetConnectionId ?? null })
       await this.getTableKeys();
       await this.loadPersistence();
 
@@ -2062,7 +2062,7 @@ export default Vue.extend({
 
             if (_.xor(response.fields, this.table.columns.map(c => c.columnName)).length > 0) {
               log.debug('table has changed, updating')
-              await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
+              await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table, targetConnectionId: this.tab?.targetConnectionId ?? null })
             }
 
             const r = response.result;
@@ -2174,7 +2174,7 @@ export default Vue.extend({
       await this.getTableKeys()
       // Re-fetch column metadata on explicit refresh so renames show up without
       // reopening the connection (issue #4567). No-ops when columns are unchanged.
-      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
+      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table, targetConnectionId: this.tab?.targetConnectionId ?? null })
 
       await this.tabulator.replaceData()
       const layout = this.tabulator.getColumnLayout();

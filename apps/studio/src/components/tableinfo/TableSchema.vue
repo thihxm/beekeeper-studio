@@ -404,7 +404,7 @@ export default Vue.extend({
         await this.connection.alterTable(changes);
 
         this.clearChanges()
-        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tabDatabase(), table: this.table })
+        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tabDatabase(), table: this.table, targetConnectionId: this.tabConnectionId() })
         this.$nextTick(() => {
           this.initializeTabulator()
         })

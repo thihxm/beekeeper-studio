@@ -76,3 +76,15 @@ export class PluginError extends Error {
     }
   }
 }
+
+/**
+ * The message to report for a thrown value. An AggregateError (e.g. a refused
+ * connection tried on both ::1 and 127.0.0.1) has an empty message, so fall
+ * back to its inner errors, then its code or name.
+ */
+export function errorMessage(e: any): any {
+  if (e?.message) return e.message;
+  const inner = Array.isArray(e?.errors) ? e.errors.map((i: any) => i?.message).filter(Boolean) : [];
+  if (inner.length) return inner.join("; ");
+  return e?.code || e?.name || e?.message || e;
+}
