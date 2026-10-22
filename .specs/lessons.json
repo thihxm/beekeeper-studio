@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 3,
+  "next_id": 6,
   "lessons": [
     {
       "id": "L-001",
@@ -40,6 +40,60 @@
       ],
       "created": "2026-10-16T00:50:21Z",
       "last_seen": "2026-10-16T00:50:21Z"
+    },
+    {
+      "id": "L-003",
+      "key": "surviving_mutant::for a display rule combining several guards default locked loaded has match give each guard a fixture where only that guard decides the outcome including the no match variant of every state",
+      "text": "For a display rule combining several guards (default, locked, loaded, has-match), give each guard a fixture where only that guard decides the outcome, including the no-match variant of every state.",
+      "signal": "surviving_mutant",
+      "scope": "apps/studio/src/components",
+      "status": "candidate",
+      "features": [
+        "tree-filter-all-databases"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "VirtualTableList.vue:298 filteredOut (rounds 1-2) (apps/studio/src/components)"
+      ],
+      "created": "2026-10-22T03:33:23Z",
+      "last_seen": "2026-10-22T03:33:23Z"
+    },
+    {
+      "id": "L-004",
+      "key": "gate_fail::keep apostrophes and other shell sensitive characters out of vitest test names used as t selectors through yarn and electron they are lost and the selector silently matches nothing",
+      "text": "Keep apostrophes and other shell-sensitive characters out of vitest test names used as -t selectors; through yarn and electron they are lost and the selector silently matches nothing.",
+      "signal": "gate_fail",
+      "scope": "apps/studio/tests/vitest",
+      "status": "candidate",
+      "features": [
+        "tree-filter-all-databases"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "checks.md C5 proof selector (round 1) (apps/studio/tests/vitest)"
+      ],
+      "created": "2026-10-22T03:33:24Z",
+      "last_seen": "2026-10-22T03:33:24Z"
+    },
+    {
+      "id": "L-005",
+      "key": "spec_precision_gap::when a claim says every entity include at least one routine in the fixture not only tables",
+      "text": "When a claim says every entity, include at least one routine in the fixture, not only tables.",
+      "signal": "spec_precision_gap",
+      "scope": "apps/studio/tests/vitest",
+      "status": "candidate",
+      "features": [
+        "tree-filter-all-databases"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "VirtualTableList.vue:259 routine match (round 2) (apps/studio/tests/vitest)"
+      ],
+      "created": "2026-10-22T03:33:24Z",
+      "last_seen": "2026-10-22T03:33:24Z"
     }
   ]
 }

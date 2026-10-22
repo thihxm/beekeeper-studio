@@ -26,6 +26,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C33/C38 verification round 1 (apps/studio/src/components)
 - last seen: 2026-10-16T00:50:21Z
 
+### L-003 - For a display rule combining several guards (default, locked, loaded, has-match), give each guard a fixture where only that guard decides the outcome, including the no-match variant of every state.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `apps/studio/src/components` · harmful: 0
+- features: tree-filter-all-databases
+- evidence: VirtualTableList.vue:298 filteredOut (rounds 1-2) (apps/studio/src/components)
+- last seen: 2026-10-22T03:33:23Z
+
+### L-004 - Keep apostrophes and other shell-sensitive characters out of vitest test names used as -t selectors; through yarn and electron they are lost and the selector silently matches nothing.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `apps/studio/tests/vitest` · harmful: 0
+- features: tree-filter-all-databases
+- evidence: checks.md C5 proof selector (round 1) (apps/studio/tests/vitest)
+- last seen: 2026-10-22T03:33:24Z
+
+### L-005 - When a claim says every entity, include at least one routine in the fixture, not only tables.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `apps/studio/tests/vitest` · harmful: 0
+- features: tree-filter-all-databases
+- evidence: VirtualTableList.vue:259 routine match (round 2) (apps/studio/tests/vitest)
+- last seen: 2026-10-22T03:33:24Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
