@@ -50,6 +50,22 @@
                   >
                   <span>Routines</span>
                 </label>
+                <template v-if="showConnectionScope">
+                  <hr>
+                  <label
+                    v-for="option in connectionScopeOptions"
+                    :key="option.value"
+                    class="connection-scope-option"
+                  >
+                    <input
+                      type="radio"
+                      name="connection-tree-scope"
+                      :value="option.value"
+                      v-model="connectionTreeScope"
+                    >
+                    <span>{{ option.label }}</span>
+                  </label>
+                </template>
                 <x-menuitem />
               </x-menu>
             </x-button>
@@ -284,6 +300,25 @@
         set() {
           this.$store.commit('showRoutines')
         }
+      },
+      /** which saved connections the tree lists next to the window's */
+      connectionTreeScope: {
+        get() {
+          return this.$store.getters['connectionTree/scope']
+        },
+        set(value) {
+          this.$store.dispatch('settings/save', { key: 'connectionTreeScope', value })
+        }
+      },
+      showConnectionScope() {
+        return this.$bksConfig.security?.lockMode !== 'pin'
+      },
+      connectionScopeOptions() {
+        return [
+          { value: 'off', label: 'No other connections' },
+          { value: 'pinned', label: 'Pinned connections' },
+          { value: 'all', label: 'All saved connections' },
+        ]
       },
       components() {
         return [

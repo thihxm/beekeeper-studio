@@ -37,10 +37,14 @@ import { matches as matchesPin } from "@/common/transport/TransportPinnedEntity"
 import { matches as matchesHidden } from "@/common/transport/TransportHidden";
 import { entityFilter } from "@/lib/db/sql_tools";
 import _ from "lodash";
+import { getDialectData } from "@shared/lib/dialects";
+import { dialectFor } from "@shared/lib/dialects/models";
+import { IConnection } from "@/common/interfaces/IConnection";
+import { BeekeeperPlugin } from "@/plugins/BeekeeperPlugin";
 
 type Entity = TableOrView | Routine | string;
 
-type Item = DatabaseItem | SchemaItem | TableItem | RoutineItem;
+type Item = ConnectionItem | DatabaseItem | SchemaItem | TableItem | RoutineItem;
 
 interface SchemaGroup {
   schema: string | null;
@@ -64,10 +68,12 @@ function groupBySchema(tables: TableOrView[], routines: Routine[]): SchemaGroup[
 }
 
 interface BaseItem {
-  type: "database" | "schema" | "table" | "routine" | "root";
+  type: "connection" | "database" | "schema" | "table" | "routine" | "root";
   entity: Entity;
   /** the database the item belongs to; null for the default database */
   database?: string | null;
+  /** the saved connection opened from the tree the item belongs to; null for the window's */
+  connectionId?: number | null;
   key: string;
   expanded: boolean;
   hidden: boolean;
@@ -77,6 +83,31 @@ interface BaseItem {
   pinned: boolean;
   /** a database or schema with an entity under it that passes the filter */
   hasMatch?: boolean;
+}
+
+interface ConnectionItem extends BaseItem {
+  type: "connection";
+  /** the connection's name */
+  entity: string;
+  isWindow: boolean;
+  /** saved label color, or null */
+  color: string | null;
+  status: "idle" | "connecting" | "connected" | "error";
+  error?: string;
+}
+
+/** Where entities of a secondary connection live in the tree */
+interface Owner {
+  connectionId: number;
+  /** key prefix of everything under the connection */
+  prefix: string;
+  defaultSchema: string | null;
+}
+
+/** The saved label color of a connection, null for none */
+function colorOf(config: IConnection | null): string | null {
+  const color = config?.labelColor;
+  return color && color !== "default" ? color : null;
 }
 
 interface RootItem extends BaseItem {
@@ -154,12 +185,16 @@ export default Vue.extend({
         groups: SchemaGroup[],
         parent: BaseItem,
         level: number,
-        database: string | null
+        database: string | null,
+        owner: Owner | null = null
       ) => {
         // the default database keeps its historic keys; others are prefixed
-        const prefix = database == null ? "" : `${database}::`;
+        const prefix = owner ? `${owner.prefix}${database}::` : database == null ? "" : `${database}::`;
         const db = database ?? this.database;
-        const hiddenSchemas = this.hiddenSchemasFor(db);
+        // pins, hidden entities and their menus belong to the window's connection
+        const hiddenSchemas = owner ? [] : this.hiddenSchemasFor(db);
+        const defaultSchema = owner ? owner.defaultSchema : this.defaultSchema;
+        const connectionId = owner?.connectionId ?? null;
         const noFolder = groups.length === 1;
         groups.forEach((group) => {
           let groupParent = parent;
@@ -170,9 +205,10 @@ export default Vue.extend({
               key,
               entity: group.schema,
               database,
-              expanded: expanded(key, this.defaultSchema === group.schema),
+              connectionId,
+              expanded: expanded(key, defaultSchema === group.schema),
               hidden: hiddenSchemas.includes(group.schema),
-              contextMenu: database == null ? this.schemaMenuOptions : [],
+              contextMenu: owner ? [] : database == null ? this.schemaMenuOptions : [],
               parent,
               level,
               pinned: false,
@@ -188,12 +224,14 @@ export default Vue.extend({
               key,
               entity: table,
               database,
+              connectionId,
               expanded: expanded(key, false),
-              hidden: this.isHiddenEntity(table, db),
-              contextMenu: database == null ? this.tableMenuOptions : this.otherDatabaseTableMenuOptions(database),
+              hidden: !owner && this.isHiddenEntity(table, db),
+              contextMenu: owner ? this.secondaryEntityMenu(owner.connectionId, database) :
+                database == null ? this.tableMenuOptions : this.otherDatabaseTableMenuOptions(database),
               parent: groupParent,
               level: childLevel,
-              pinned: this.isPinned(table, db),
+              pinned: !owner && this.isPinned(table, db),
               loadingColumns: false,
             });
           });
@@ -204,55 +242,148 @@ export default Vue.extend({
               key,
               type: "routine",
               database,
+              connectionId,
               expanded: expanded(key, false),
-              hidden: this.isHiddenEntity(routine, db),
-              contextMenu: database == null ? this.routineMenuOptions : [],
+              hidden: !owner && this.isHiddenEntity(routine, db),
+              contextMenu: owner ? [] : database == null ? this.routineMenuOptions : [],
               parent: groupParent,
               level: childLevel,
-              pinned: this.isPinned(routine, db),
+              pinned: !owner && this.isPinned(routine, db),
             });
           });
         });
       };
 
-      if (!this.multipleDatabases) {
-        addEntities(this.schemaTables, root, 0, null);
-      } else {
-        // no default database: its entities stay at the top, as before
-        if (!this.databaseList.includes(this.database)) {
-          addEntities(this.schemaTables, root, 0, null);
+      const addWindow = (parent: BaseItem, level: number) => {
+        if (!this.multipleDatabases) {
+          addEntities(this.schemaTables, parent, level, null);
+        } else {
+          // no default database: its entities stay at the top, as before
+          if (!this.databaseList.includes(this.database)) {
+            addEntities(this.schemaTables, parent, level, null);
+          }
+          for (const name of this.databaseList) {
+            const isDefault = name === this.database;
+            const loaded = this.databaseEntities[name];
+            const key = `database::${name}`;
+            const databaseItem: DatabaseItem = {
+              type: "database",
+              key,
+              entity: name,
+              database: isDefault ? null : name,
+              isDefault,
+              locked: !isDefault && this.inaccessibleDatabases.includes(name),
+              color: this.colorFor(name),
+              status: isDefault ? "loaded" : loaded?.status ?? "idle",
+              error: loaded?.error,
+              // a locked database never opens, even if it was expanded before the lock
+              expanded: !isDefault && this.inaccessibleDatabases.includes(name) ? false : expanded(key, isDefault),
+              hidden: false,
+              contextMenu: this.databaseMenuOptions,
+              parent,
+              level,
+              pinned: false,
+            };
+            items.push(databaseItem);
+            if (isDefault) {
+              addEntities(this.schemaTables, databaseItem, level + 1, null);
+            } else if (loaded?.status === "loaded") {
+              const tables = entityFilter(loaded.tables, this.entityFilter);
+              const routines = entityFilter(loaded.routines, this.entityFilter);
+              addEntities(groupBySchema(tables, routines), databaseItem, level + 1, name);
+            }
+          }
         }
-        for (const name of this.databaseList) {
-          const isDefault = name === this.database;
-          const loaded = this.databaseEntities[name];
-          const key = `database::${name}`;
+      };
+
+      /** A saved connection opened next to the window's, and what it has loaded */
+      const addSecondary = (config: IConnection) => {
+        const id = config.id;
+        const node = this.secondaryConnection(id);
+        const key = `connection::${id}`;
+        const owner: Owner = { connectionId: id, prefix: `${key}::`, defaultSchema: node.defaultSchema ?? null };
+        const closed = node.status === "idle" || node.status === "error";
+        const connectionItem: ConnectionItem = {
+          type: "connection",
+          key,
+          entity: config.name,
+          connectionId: id,
+          isWindow: false,
+          color: colorOf(config),
+          status: node.status,
+          error: node.error,
+          expanded: closed ? false : expanded(key, false),
+          hidden: false,
+          contextMenu: this.secondaryConnectionMenu(id),
+          parent: root,
+          level: 0,
+          pinned: false,
+        };
+        items.push(connectionItem);
+        if (node.status !== "connected") return;
+
+        const filtered = (database: string | null) => {
+          const loaded = node.databaseEntities[database];
+          return groupBySchema(entityFilter(loaded?.tables ?? [], this.entityFilter), entityFilter(loaded?.routines ?? [], this.entityFilter));
+        };
+        const dialect = getDialectData(dialectFor(node.connectionType));
+        if (dialect?.disabledFeatures?.multipleDatabases || node.databaseList.length === 0) {
+          if (node.databaseEntities[node.database]?.status === "loaded") {
+            addEntities(filtered(node.database), connectionItem, 1, node.database, owner);
+          }
+          return;
+        }
+        for (const name of node.databaseList) {
+          const isDefault = name === node.database;
+          const loaded = node.databaseEntities[name];
+          const databaseKey = `${owner.prefix}database::${name}`;
+          const locked = !isDefault && node.inaccessibleDatabases.includes(name);
           const databaseItem: DatabaseItem = {
             type: "database",
-            key,
+            key: databaseKey,
             entity: name,
-            database: isDefault ? null : name,
+            database: name,
+            connectionId: id,
             isDefault,
-            locked: !isDefault && this.inaccessibleDatabases.includes(name),
-            color: this.colorFor(name),
-            status: isDefault ? "loaded" : loaded?.status ?? "idle",
+            locked,
+            color: null,
+            status: loaded?.status ?? "idle",
             error: loaded?.error,
-            // a locked database never opens, even if it was expanded before the lock
-            expanded: !isDefault && this.inaccessibleDatabases.includes(name) ? false : expanded(key, isDefault),
+            expanded: locked ? false : expanded(databaseKey, isDefault),
             hidden: false,
-            contextMenu: this.databaseMenuOptions,
-            parent: root,
-            level: 0,
+            contextMenu: this.secondaryDatabaseMenu(id, name),
+            parent: connectionItem,
+            level: 1,
             pinned: false,
           };
           items.push(databaseItem);
-          if (isDefault) {
-            addEntities(this.schemaTables, databaseItem, 1, null);
-          } else if (loaded?.status === "loaded") {
-            const tables = entityFilter(loaded.tables, this.entityFilter);
-            const routines = entityFilter(loaded.routines, this.entityFilter);
-            addEntities(groupBySchema(tables, routines), databaseItem, 1, name);
-          }
+          if (loaded?.status === "loaded") addEntities(filtered(name), databaseItem, 2, name, owner);
         }
+      };
+
+      const secondaries: IConnection[] = this.connectionLevel ? this.listedConnections : [];
+      if (secondaries.length === 0) {
+        addWindow(root, 0);
+      } else {
+        const windowKey = "connection::window";
+        const windowItem: ConnectionItem = {
+          type: "connection",
+          key: windowKey,
+          entity: this.windowConnectionName,
+          connectionId: null,
+          isWindow: true,
+          color: colorOf(this.usedConfig),
+          status: "connected",
+          expanded: expanded(windowKey, true),
+          hidden: false,
+          contextMenu: [],
+          parent: root,
+          level: 0,
+          pinned: false,
+        };
+        items.push(windowItem);
+        addWindow(windowItem, 1);
+        secondaries.forEach(addSecondary);
       }
 
       for (const item of items) {
@@ -295,7 +426,7 @@ export default Vue.extend({
       if (!this.filtering || !item.hasMatch) return false;
       // a locked database never opens, even with entities loaded before the lock
       if (item.type === "database") return !(item as DatabaseItem).locked;
-      return item.type === "schema";
+      return item.type === "schema" || item.type === "connection";
     },
     /** While filtering, a loaded database with no match is left out; locked ones stay listed */
     filteredOut(item: Item) {
@@ -303,8 +434,18 @@ export default Vue.extend({
         item.status === "loaded" && !item.hasMatch;
     },
     loadDatabase(item: DatabaseItem, force = false) {
-      if (item.isDefault || item.locked) return;
+      if (item.locked) return;
+      if (item.connectionId != null) {
+        this.$store.dispatch("connectionTree/loadDatabase", { id: item.connectionId, database: item.entity, force });
+        return;
+      }
+      if (item.isDefault) return;
       this.$store.dispatch("loadDatabaseEntities", { database: item.entity, force });
+    },
+    /** Connects a saved connection listed in the tree, in its own session */
+    openConnection(item: ConnectionItem) {
+      if (item.isWindow) return;
+      this.$store.dispatch("connectionTree/open", item.connectionId);
     },
     /** Expand the tree down to `key` and scroll to it, if the config allows */
     revealItem(key: string) {
@@ -403,10 +544,14 @@ export default Vue.extend({
       if (item.expanded && item.type === "database") {
         this.loadDatabase(item);
       }
+      if (item.expanded && item.type === "connection" && (item.status === "idle" || item.status === "error")) {
+        this.openConnection(item);
+      }
       this.generateDisplayItems();
     },
-    handleRetry(_: Event, item: DatabaseItem) {
-      this.loadDatabase(item, true);
+    handleRetry(_: Event, item: DatabaseItem | ConnectionItem) {
+      if (item.type === "connection") this.openConnection(item);
+      else this.loadDatabase(item, true);
     },
     handlePin(_: Event, item: TableItem) {
       this.trigger(AppEvent.togglePinTableList, item.entity, !item.pinned);
@@ -477,6 +622,9 @@ export default Vue.extend({
     filtering() {
       return !!this.entityFilter?.filterQuery;
     },
+    savedConnectionItems() {
+      return this.$store.state["data/connections"]?.items;
+    },
     multipleDatabases() {
       return !this.dialectData?.disabledFeatures?.multipleDatabases && this.databaseList.length > 0;
     },
@@ -489,6 +637,11 @@ export default Vue.extend({
         this.databaseEntities,
         this.entityFilter.filterQuery,
         this.inaccessibleDatabases,
+        this.listedConnections,
+        this.secondaryConnections,
+        this.connectionLevel,
+        // the Disconnect action is disabled while a tab on the connection is busy
+        this.busyTabs,
         // the colorFor getter returns the same function as labels change; watch the labels themselves
         this.databaseLabelRecords,
         this.pins,
@@ -503,6 +656,85 @@ export default Vue.extend({
       dialectData: "dialectData",
       colorFor: "databaseLabels/colorFor",
     }),
+    // read without map helpers: a store without the connectionTree module lists nothing
+    listedConnections(): IConnection[] {
+      return this.$store.getters["connectionTree/listed"] ?? [];
+    },
+    secondaryConnection() {
+      return this.$store.getters["connectionTree/connection"];
+    },
+    secondaryConnections() {
+      return this.$store.state.connectionTree?.connections;
+    },
+    busyTabs() {
+      return this.$store.state.connectionTree?.busyTabs;
+    },
+    /** The tree lists saved connections; not in PIN lock mode, where connecting needs the PIN */
+    connectionLevel() {
+      return this.$bksConfig.security?.lockMode !== "pin";
+    },
+    windowConnectionName() {
+      return this.usedConfig?.name || (this.usedConfig ? BeekeeperPlugin.buildConnectionName(this.usedConfig) : "Connection");
+    },
+    secondaryConnectionMenu() {
+      return (id: number) => {
+        const busy = Object.values(this.busyTabs ?? {}).includes(id);
+        return [
+          {
+            name: "New query",
+            slug: "connection-new-query",
+            handler: () => this.trigger(AppEvent.newQueryOnConnection, { connectionId: id, database: null }),
+          },
+          {
+            name: "Refresh",
+            slug: "connection-refresh",
+            handler: () => this.$store.dispatch("connectionTree/refresh", id),
+          },
+          {
+            name: "Disconnect",
+            slug: "connection-disconnect",
+            class: busy ? "disabled" : "",
+            title: busy ? "A tab on this connection has an open transaction" : "",
+            handler: () => {
+              if (!busy) this.$store.dispatch("connectionTree/disconnect", id);
+            },
+          },
+        ];
+      };
+    },
+    secondaryDatabaseMenu() {
+      return (id: number, database: string) => [
+        {
+          name: "New query",
+          slug: "database-new-query",
+          handler: () => this.trigger(AppEvent.newQueryOnConnection, { connectionId: id, database }),
+        },
+      ];
+    },
+    secondaryEntityMenu() {
+      return (id: number, database: string | null) => [
+        {
+          name: "View Data",
+          slug: "view-data",
+          handler: ({ item }) => this.$root.$emit(AppEvent.loadTable, { table: item, database, connectionId: id }),
+        },
+        {
+          name: "View Structure",
+          slug: "view-structure",
+          handler: ({ item }) => this.$root.$emit(AppEvent.openTableProperties, { table: item, database, connectionId: id }),
+        },
+        {
+          name: "New query",
+          slug: "entity-new-query",
+          handler: () => this.trigger(AppEvent.newQueryOnConnection, { connectionId: id, database }),
+        },
+        {
+          name: "Copy Name",
+          slug: "copy-name",
+          handler: ({ item }) => this.$copyText(item.name),
+        },
+      ];
+    },
     databaseMenuOptions() {
       return [
         {
@@ -535,8 +767,13 @@ export default Vue.extend({
     minimalMode() {
       this.generateDisplayItems();
     },
+    // a saved connection created, renamed, recolored or deleted
+    savedConnectionItems() {
+      if (this.$store.state.connectionTree) this.$store.dispatch("connectionTree/loadSaved");
+    },
   },
   mounted() {
+    if (this.$store.state.connectionTree) this.$store.dispatch("connectionTree/loadSaved");
     this.generateItems();
     this.generateDisplayItems();
     this.registerHandlers(this.rootBindings);
