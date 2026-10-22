@@ -86,3 +86,7 @@ Size from `wc -c` on the files the slice touches, divided by 4:
 
 - S1 = `VirtualTableList.vue` 17 KB + `TableList.vue` 11 KB + two new specs ≈ 5 KB = 33 KB ≈ 8k, **under the 150k budget**
 - Mechanism: one builder, no ask (the estimate fits)
+
+- **Boundary:** C1-C7 closed at `cd546929c`
+- **Settled mid-build:** the red run reproduced the diagnosis before any change: C1, C2, C4, C5 and C6 failed on today's code, C3 and C7 (the "as today" cases) passed. A hidden entity, or one under a hidden schema, does not open its database or schema while filtering.
+- **Abandoned:** none
