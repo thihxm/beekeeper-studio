@@ -205,6 +205,7 @@ export const ConnectionTreeModule: Module<State, RootState> = {
       }
     },
     async connect(context, id: number): Promise<boolean> {
+      if (!context.state.savedLoaded) await context.dispatch("loadSaved");
       const saved: IConnection = context.getters.savedConnection(id);
       if (!saved) {
         context.commit("update", { id, changes: { status: "error", error: "Saved connection not found" } });
