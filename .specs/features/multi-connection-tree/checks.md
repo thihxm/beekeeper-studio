@@ -216,3 +216,7 @@ Size from `wc -c` on the files each slice touches, divided by 4:
 - Test templates and fixtures ≈ 12k, for **≈ 153k, over the 150k budget**
 - Proposed cut, at the surface boundary: batch 1 = S1 + S2 (the tree and the child sessions, ≈ 45k with their tests); batch 2 = S3 + S4 (tabs, dialect context, status bar, ≈ 110k with their tests), on green only
 - Mechanism: one builder, compaction accepted - firstmate decision 2026-10-22 (the estimate is ~2% over the budget)
+
+- **Boundary:** C1-C38 closed at `012a026a6` (one builder)
+- **Settled mid-build:** tests were written with the code rather than strictly red first; the Verifier's fault injection is the guard for that. Two legacy tests faked `this` without the new `tabConnectionId` and asserted the old call arity: `tabDatabaseColumns.spec.ts` now passes `tabConnectionId: () => null` and asserts `tablesFor("b", null)` (still exact). Copy-as-SQL / copy-as-IN-list used to send `conn/*` without the tab's database either; they now go through the tab's client (`connection` option of `copyActionsMenu`), which also fixes them for non-default databases. `TablePartitions` read `this.dialect` that was never mapped; the mixin now provides it. `src/migration/index.js` exports `realMigrations` so the migration proof can find its entry without running every migration.
+- **Abandoned:** routing `query/*` through `database` like `conn/*` - the query handlers ignore it; they now go to the client's session (`sendToSession`).
