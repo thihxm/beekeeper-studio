@@ -284,6 +284,23 @@ describe("secondary connections in the entity tree", () => {
     })
   }
 
+  it("expanding again after a disconnect during connect connects on that expand", async () => {
+    let release: () => void
+    const slow = fakeServer(C.name, { slowConnect: new Promise<void>((r) => (release = r)) })
+
+    const first = store.dispatch("connectionTree/open", 7)
+    await vi.waitFor(() => expect(slow.createConnection).toHaveBeenCalled())
+    await store.dispatch("connectionTree/disconnect", 7)
+    const second = store.dispatch("connectionTree/open", 7)
+    release()
+
+    expect(await first).toBe(false)
+    expect(await second).toBe(true)
+    expect(connectionOf(7).status).toBe("connected")
+    expect(received.filter((r) => r.name === "conn/create")).toHaveLength(2)
+    expect(state(C_KEY).server).not.toBeNull()
+  })
+
   it("surrealdb secondary databases are keyed by the connection namespace", async () => {
     const config = { id: 15, name: "surreal", connectionType: "surrealdb", defaultDatabase: "main", surrealDbOptions: { namespace: "acme" } }
     store.commit("connectionTree/update", { id: 15, changes: { status: "connected", config, database: "main", connectionType: "surrealdb" } })

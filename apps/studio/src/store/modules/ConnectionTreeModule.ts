@@ -50,7 +50,7 @@ const emptyConnection = (): SecondaryConnection => ({
 });
 
 // connects in flight, so two expands of one node connect once
-const pending = new Map<number, Promise<boolean>>();
+const pending = new Map<number, { generation: number, opening: Promise<boolean> }>();
 // bumped by every disconnect, so a connect or load that outlives one stops
 const generations = new Map<number, number>();
 const generation = (id: number) => generations.get(id) ?? 0;
@@ -210,13 +210,16 @@ export const ConnectionTreeModule: Module<State, RootState> = {
     /** Connects saved connection `id` in its own session; true once it is connected */
     async open(context, id: number): Promise<boolean> {
       if (context.state.connections[id]?.status === "connected") return true;
-      if (pending.has(id)) return await pending.get(id);
-      const opening = context.dispatch("connect", id);
-      pending.set(id, opening);
+      const current = pending.get(id);
+      if (current?.generation === generation(id)) return await current.opening;
+      const started = generation(id);
+      const connect = async (): Promise<boolean> => generation(id) === started && await context.dispatch("connect", id);
+      const entry = { generation: started, opening: current ? current.opening.then(connect, connect) : connect() };
+      pending.set(id, entry);
       try {
-        return await opening;
+        return await entry.opening;
       } finally {
-        pending.delete(id);
+        if (pending.get(id) === entry) pending.delete(id);
       }
     },
     async connect(context, id: number): Promise<boolean> {
