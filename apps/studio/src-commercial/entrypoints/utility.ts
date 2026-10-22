@@ -11,7 +11,7 @@ import { ConnHandlers } from '../backend/handlers/connHandlers';
 import { FileHandlers } from '@/handlers/fileHandlers';
 import { GeneratorHandlers } from '@/handlers/generatorHandlers';
 import { Handlers } from '../backend/handlers/handlers';
-import { newState, removeState, state } from '@/handlers/handlerState';
+import { newState, removeState, sessionForRequest, state } from '@/handlers/handlerState';
 import { QueryHandlers } from '@/handlers/queryHandlers';
 import { TabHistoryHandlers } from '@/handlers/tabHistoryHandlers'
 import { ExportHandlers } from '@commercial/backend/handlers/exportHandlers';
@@ -198,6 +198,13 @@ async function initState(sId: string, port: MessagePortMain) {
 
   state(sId).port.on('message', ({ data }) => {
     const { id, name, args } = data;
+    try {
+      // a request for another saved connection runs in that connection's own session
+      if (args?.sId) sessionForRequest(args.sId);
+    } catch (e) {
+      port.postMessage({ id, type: 'error', error: e?.message ?? e });
+      return;
+    }
     runHandler(id, name, args);
   })
 
