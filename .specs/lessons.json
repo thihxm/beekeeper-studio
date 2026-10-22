@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 6,
+  "next_id": 9,
   "lessons": [
     {
       "id": "L-001",
@@ -94,6 +94,60 @@
       ],
       "created": "2026-10-22T03:33:24Z",
       "last_seen": "2026-10-22T03:33:24Z"
+    },
+    {
+      "id": "L-006",
+      "key": "surviving_mutant::when a component draws state from a derived value isopen expanded openedbyfilter assert the derived value or the rendered markup never only the stored flag",
+      "text": "When a component draws state from a derived value (isOpen = expanded || openedByFilter), assert the derived value or the rendered markup, never only the stored flag.",
+      "signal": "surviving_mutant",
+      "scope": "apps/studio/tests/vitest",
+      "status": "candidate",
+      "features": [
+        "multi-connection-tree"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "VirtualTableList.vue:426 openedByFilter vs stored expanded (round 3) (apps/studio/tests/vitest)"
+      ],
+      "created": "2026-10-22T06:54:12Z",
+      "last_seen": "2026-10-22T06:54:12Z"
+    },
+    {
+      "id": "L-007",
+      "key": "surviving_mutant::for provide inject wiring run the real provider s provide above a child built on the real mixin a test that injects the value itself proves nothing about the provider",
+      "text": "For provide/inject wiring, run the real provider's provide above a child built on the real mixin; a test that injects the value itself proves nothing about the provider.",
+      "signal": "surviving_mutant",
+      "scope": "apps/studio/tests/vitest",
+      "status": "candidate",
+      "features": [
+        "multi-connection-tree"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "TabTableProperties.vue provide tabConnectionId (round 1) (apps/studio/tests/vitest)"
+      ],
+      "created": "2026-10-22T06:54:12Z",
+      "last_seen": "2026-10-22T06:54:12Z"
+    },
+    {
+      "id": "L-008",
+      "key": "surviving_mutant::build store fixtures with every field the real store always sets e g a connection s default database or a mutant that branches on that field survives",
+      "text": "Build store fixtures with every field the real store always sets (e.g. a connection's default database), or a mutant that branches on that field survives.",
+      "signal": "surviving_mutant",
+      "scope": "apps/studio/tests/vitest",
+      "status": "candidate",
+      "features": [
+        "multi-connection-tree"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "TableListFilterBadge.spec.ts fixture without database (round 2) (apps/studio/tests/vitest)"
+      ],
+      "created": "2026-10-22T06:54:12Z",
+      "last_seen": "2026-10-22T06:54:12Z"
     }
   ]
 }
