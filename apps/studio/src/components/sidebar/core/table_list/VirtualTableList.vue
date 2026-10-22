@@ -288,11 +288,15 @@ export default Vue.extend({
     },
     /** While filtering, nodes with a match show open without touching what the user expanded */
     openedByFilter(item: BaseItem) {
-      return this.filtering && (item.type === "database" || item.type === "schema") && !!item.hasMatch;
+      if (!this.filtering || !item.hasMatch) return false;
+      // a locked database never opens, even with entities loaded before the lock
+      if (item.type === "database") return !(item as DatabaseItem).locked;
+      return item.type === "schema";
     },
-    /** While filtering, a loaded database with no match is left out */
+    /** While filtering, a loaded database with no match is left out; locked ones stay listed */
     filteredOut(item: Item) {
-      return this.filtering && item.type === "database" && !item.isDefault && item.status === "loaded" && !item.hasMatch;
+      return this.filtering && item.type === "database" && !item.isDefault && !item.locked &&
+        item.status === "loaded" && !item.hasMatch;
     },
     loadDatabase(item: DatabaseItem, force = false) {
       if (item.isDefault || item.locked) return;

@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/tree-filter-all-databases/plan.md`
 
-7 checks in 1 slice · 0 one-way doors · 0 open
+10 checks in 1 slice · 0 one-way doors · 0 open
 
 Every proof runs from `apps/studio/`. `VU` = `yarn vitest:unit`. The tree proofs mount
 `VirtualTableList` with the app's real `filteredTables`, `filteredRoutines` and `schemaTables`
@@ -15,7 +15,7 @@ names are not substrings of each other except where a check needs it.
 
 ### S1 - filter results from every loaded database are visible · 3 files · 33 KB · ~8k
 
-**C1** - With filter `use`, `users` of the default database `a` and `users` of the loaded database `b` are both displayed while `b`'s database node is collapsed, and `log` in `a`'s collapsed `audit` schema is displayed with filter `lo` (AC 1) ✅
+**C1** - With filter `use`, `users` of the default database `a` and `users` of the loaded database `b` are both displayed while `b`'s database node is collapsed, and `user_log` in `a`'s collapsed `audit` schema is displayed with the same filter (AC 1) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "shows matches under collapsed database and schema nodes"`
 
 **C2** - With filter `use`, a loaded database `c` whose only entity is `invoices` is not in `displayItems`, while `b` (which has `users`) is (AC 2) ✅
@@ -28,7 +28,7 @@ Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "keeps
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "shows matches of a database that loads during the filter"`
 
 **C5** - After filter `use` is cleared, `b` is collapsed again and its `users` is not displayed; and when `b` was clicked open (`handleExpand`) during the filter, it stays open after the filter is cleared (AC 5) ✅
-Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "restores the user's expansion when the filter is cleared"`
+Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "restores the user.s expansion when the filter is cleared"`
 
 **C6** - With filter `use`, `a` holding `users`, `orders`, `log` and loaded `b` holding `users`, `events`, plus `c` in `loading`, the `Entities` badge reads `2 / 5`; with one hidden entity in `a` it reads `2 / 4` (AC 6) ✅
 Proof: `VU tests/vitest/unit/components/TableListFilterBadge.spec.ts -t "badge sums the default and loaded databases"`
@@ -36,13 +36,23 @@ Proof: `VU tests/vitest/unit/components/TableListFilterBadge.spec.ts -t "badge s
 **C7** - Where `disabledFeatures.multipleDatabases` is set, filter `use` displays no database item and displays `users` of the default entity list only (AC 7) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "single-database dialects filter as before"`
 
+**C8** - With filter `zzz` (no match anywhere), the default database node `a` is still in `displayItems` while a loaded `b` with no match is not (AC 2 - it names non-default databases only) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "keeps the default database when it has no match"`
+
+**C9** - With filter `s`, a loaded `b` whose only matches are a hidden entity (`events`) and an entity under a hidden schema (`reporting.user_stats`) is not in `displayItems`, and none of `b`'s tables is displayed (AC 2 - a hidden match is not a match the user can see) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "hidden entities and hidden schemas do not count as matches"`
+
+**C10** - With filter `use`, a locked `b` whose entities (`users`, `events`) were loaded before the lock is in `displayItems` with `expanded` false, and none of `b`'s tables is displayed (AC 3) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "keeps a locked database collapsed even when its entities were loaded"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
 | --- | --- | --- |
 | plan Landing doors (0) | none - the plan's Landing is `None` | - |
-| database node state while filtering (7) | default C1 · loaded with match C1 · loaded without match C2 · idle C3 · loading C3 · error C3 · locked C3 | - |
+| database node state while filtering (9) | default with match C1 · default without match C8 · loaded with match C1 · loaded without match C2 · idle C3 · loading C3 · error C3 · locked C3 · locked with loaded entities C10 | - |
 | node kinds opened by the filter (2) | database C1 · schema C1 | - |
+| entities that do not count as a match (2) | hidden entity C9 · entity under a hidden schema C9 | - |
 | filter transitions (3) | empty → set C1 · set while a database loads C4 · set → empty C5 | - |
 | expansion sources restored on clear (2) | stored before the filter C5 · clicked during the filter C5 | - |
 | badge terms (3) | default database C6 · loaded non-default database C6 · unloaded database excluded C6 | - |
@@ -73,7 +83,7 @@ Cost: 2 spec files, 7 tests.
 - validation: n/a - matching is `entityFilter` (`sql_tools.ts`), unchanged by this feature
 - failure modes: C3 (a database in `error` while filtering)
 - idempotency: n/a - the filtered display is recomputed from state; there is no write
-- authorization: C3 (a locked database while filtering)
+- authorization: C3, C10 (a locked database while filtering, loaded or not)
 - concurrency: C4 (a load that lands while the filter is set)
 - data lifecycle: n/a - nothing is stored
 - dependency failure: C3 (`error` state)
@@ -90,3 +100,4 @@ Size from `wc -c` on the files the slice touches, divided by 4:
 - **Boundary:** C1-C7 closed at `cd546929c`
 - **Settled mid-build:** the red run reproduced the diagnosis before any change: C1, C2, C4, C5 and C6 failed on today's code, C3 and C7 (the "as today" cases) passed. A hidden entity, or one under a hidden schema, does not open its database or schema while filtering.
 - **Abandoned:** none
+- **Settled after verification round 1:** the Verifier found a surviving mutant (the default database with no match had no check), a C5 proof selector that ran no test (the apostrophe is lost through yarn and electron; the pattern now uses `.`), two unproven members (hidden matches, a locked database with loaded entities), and C1's wording naming `log`/`lo` where its test asserts `user_log`/`use` (same property; the text now matches the test). C8-C10 were added with their tests. C10 was red and found a real bug: a locked database with entities loaded before the lock opened while filtering; `openedByFilter` and `filteredOut` now leave locked databases alone. No existing assertion or test was changed.

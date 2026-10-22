@@ -25,6 +25,8 @@ interface Options {
   databaseList?: string[];
   databaseEntities?: Record<string, any>;
   inaccessibleDatabases?: string[];
+  hiddenEntities?: any[];
+  hiddenSchemas?: any[];
 }
 
 let wrapper: Wrapper<Vue>;
@@ -63,7 +65,7 @@ function mountList(opts: Options = {}) {
     },
     modules: {
       pins: { namespaced: true, state: { pins: [] } },
-      hideEntities: { namespaced: true, state: { entities: [], schemas: [] } },
+      hideEntities: { namespaced: true, state: { entities: opts.hiddenEntities ?? [], schemas: opts.hiddenSchemas ?? [] } },
       databaseLabels: {
         namespaced: true,
         state: { labels: [] },
@@ -206,6 +208,46 @@ describe("VirtualTableList filter across loaded databases", () => {
     expect(shownDatabases(vm)).toEqual([]);
     expect(shownTables(vm)).toContain("a:users");
     expect(shownTables(vm)).not.toContain("a:orders");
+    expect(shownTables(vm).filter((t: string) => t.startsWith("b:"))).toEqual([]);
+  });
+
+  it("keeps the default database when it has no match", async () => {
+    const { store, vm } = mountList({ databaseEntities: { b: loaded(table("users")) } });
+    await settle();
+
+    await setFilter(store, "zzz");
+
+    expect(shownDatabases(vm)).toContain("a");
+    expect(shownDatabases(vm)).not.toContain("b");
+  });
+
+  it("hidden entities and hidden schemas do not count as matches", async () => {
+    // both matches of `s` in b are hidden: `events` itself, and `user_stats` through its schema
+    const { store, vm } = mountList({
+      databaseEntities: { b: loaded(table("events"), table("user_stats", "reporting")) },
+      hiddenEntities: [{ databaseName: "b", schemaName: "public", entityName: "events", entityType: "table" }],
+      hiddenSchemas: [{ databaseName: "b", name: "reporting" }],
+    });
+    await settle();
+
+    await setFilter(store, "s");
+
+    expect(shownDatabases(vm)).not.toContain("b");
+    expect(shownTables(vm).filter((t: string) => t.startsWith("b:"))).toEqual([]);
+  });
+
+  it("keeps a locked database collapsed even when its entities were loaded", async () => {
+    const { store, vm } = mountList({
+      databaseEntities: { b: loaded(table("users"), table("events")) },
+      inaccessibleDatabases: ["b"],
+    });
+    await settle();
+
+    await setFilter(store, "use");
+
+    const b = databaseItem(vm, "b");
+    expect(vm.displayItems).toContain(b);
+    expect(b.expanded).toBe(false);
     expect(shownTables(vm).filter((t: string) => t.startsWith("b:"))).toEqual([]);
   });
 });
