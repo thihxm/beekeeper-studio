@@ -5,8 +5,10 @@
  *
  * - Only runs for the commit the version tag (v<package.json version>) points
  *   at, so ordinary master pushes never touch an older release.
- * - Reuses the tag's draft release, or creates one the way studio-publish.yml
- *   does (draft + generated notes). Published releases are left alone.
+ * - Uploads to the tag's draft release, which studio-publish.yml creates when
+ *   the tag is pushed. It never creates one: a second draft for the same tag
+ *   splits the release (v6.2.2), so it waits for that draft to be listed.
+ *   Published releases are left alone.
  * - Every asset is uploaded as nonprod-<original name>, and only those names
  *   are ever replaced, so re-runs are idempotent and production assets are
  *   never overwritten.
@@ -61,10 +63,25 @@ async function tagCommit(github, owner, repo, tag) {
 async function findRelease(github, owner, repo, tag) {
   // getReleaseByTag never returns drafts, so search the full list instead.
   const releases = await github.paginate(github.rest.repos.listReleases, { owner, repo, per_page: 100 })
-  return releases.find((release) => release.tag_name === tag) || null
+  const matches = releases.filter((release) => release.tag_name === tag)
+  // softprops/action-gh-release, which creates studio-publish.yml's draft,
+  // settles on the same one: a published release, else the oldest draft.
+  return matches.find((release) => !release.draft)
+    || matches.sort((a, b) => a.id - b.id)[0]
+    || null
 }
 
-module.exports = async ({ github, context, core }, { dir, version }) => {
+// A new draft can take a while to show up in the release list.
+async function waitForRelease(github, owner, repo, tag, { attempts, delayMs }, core) {
+  for (let attempt = 1; ; attempt++) {
+    const release = await findRelease(github, owner, repo, tag)
+    if (release || attempt >= attempts) return release
+    core.info(`No release for ${tag} listed yet, checking again in ${delayMs / 1000}s (${attempt}/${attempts})`)
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+  }
+}
+
+module.exports = async ({ github, context, core }, { dir, version, wait = { attempts: 30, delayMs: 30000 } }) => {
   const { owner, repo } = context.repo
   const tag = `v${version}`
 
@@ -82,19 +99,16 @@ module.exports = async ({ github, context, core }, { dir, version }) => {
     return
   }
 
-  let release = await findRelease(github, owner, repo, tag)
-  if (release && !release.draft) {
+  const release = await waitForRelease(github, owner, repo, tag, wait, core)
+  if (!release) {
+    core.setFailed(`No draft release for ${tag}. studio-publish.yml creates it when the tag is pushed; re-run this job once it is listed.`)
+    return
+  }
+  if (!release.draft) {
     core.notice(`${tag} is already published; leaving its assets untouched.`)
     return
   }
-  if (!release) {
-    ({ data: release } = await github.rest.repos.createRelease({
-      owner, repo, tag_name: tag, name: tag, draft: true, generate_release_notes: true,
-    }))
-    core.info(`Created draft release ${tag} (${release.id})`)
-  } else {
-    core.info(`Reusing draft release ${tag} (${release.id})`)
-  }
+  core.info(`Uploading to draft release ${tag} (${release.id})`)
 
   const existing = await github.paginate(github.rest.repos.listReleaseAssets, {
     owner, repo, release_id: release.id, per_page: 100,
