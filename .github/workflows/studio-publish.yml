@@ -334,6 +334,8 @@ jobs:
           GCP_ACCESS_TOKEN: "${{ steps.auth.outputs.access_token }}"
           # WIN_CERT_FILE and JSIGN_JAR are exported to $GITHUB_ENV by earlier steps
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Uploads go to this draft, never to one found by tag (build/pinGithubRelease.js)
+          BKS_RELEASE_ID: ${{ needs.create_draft_release.outputs.id }}
           USE_SYSTEM_FPM: true
           SNAPCRAFT_BUILD_ENVIRONMENT: 'lxd'
         run: yarn run electron:build --publish always
@@ -349,6 +351,8 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ needs.check_credentials.outputs.mac_signing == 'true' }}
           CSC_KEY_PASSWORD: ${{ secrets.mac_dev_pw }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Uploads go to this draft, never to one found by tag (build/pinGithubRelease.js)
+          BKS_RELEASE_ID: ${{ needs.create_draft_release.outputs.id }}
           USE_SYSTEM_FPM: true
           SNAPCRAFT_BUILD_ENVIRONMENT: 'lxd'
         run: yarn run electron:build --publish always
@@ -470,6 +474,17 @@ jobs:
 
             // Read the merged yml file
             const ymlContent = fs.readFileSync('merged.yml', 'utf8');
+
+            // A re-run finds the merged file from the previous attempt
+            const { owner, repo } = context.repo;
+            const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner, repo, release_id: releaseId, per_page: 100,
+            });
+            const previous = assets.find((asset) => asset.name === process.env.FILE);
+            if (previous) {
+              await github.rest.repos.deleteReleaseAsset({ owner, repo, asset_id: previous.id });
+              core.info(`Replacing ${process.env.FILE}`);
+            }
 
             // Upload the asset using the release ID
             await github.rest.repos.uploadReleaseAsset({

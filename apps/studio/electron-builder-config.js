@@ -20,6 +20,12 @@ const bksErDiagramPath = path.dirname(require.resolve('@beekeeperstudio/bks-er-d
 // Releases (and the electron-updater feed baked into app-update.yml) live on this repo
 const githubPublish = { provider: 'github', owner: 'thihxm', repo: 'beekeeper-studio' }
 
+// studio-publish.yml sets this to the draft release every build leg uploads to.
+// Set but empty fails the build rather than fall back to finding one by tag.
+if (process.env.BKS_RELEASE_ID !== undefined) {
+  require('./build/pinGithubRelease')(process.env.BKS_RELEASE_ID)
+}
+
 // Each Windows architecture builds natively on its own runner (windows-2022 for
 // x64, windows-11-arm for arm64), and electron-builder targets the host arch
 // unless --x64/--arm64 is passed. Its default NSIS and portable names have no

@@ -57,10 +57,13 @@ function touch(dir: string, name: string, content = name) {
   fs.writeFileSync(path.join(dir, name), content)
 }
 
+// releases is what listReleases returns; a list of lists is one per call, the
+// last repeating, to model a draft that shows up in the listing late.
 function fakeGithub({ tagSha = SHA, releases = [] as any[], assets = [] as any[] } = {}) {
+  const listings = Array.isArray(releases[0]) ? releases : [releases]
+  let listing = 0
   const uploaded: any[] = []
   const deleted: number[] = []
-  const created: any[] = []
   const rest = {
     git: {
       getRef: vi.fn(async () => {
@@ -72,23 +75,23 @@ function fakeGithub({ tagSha = SHA, releases = [] as any[], assets = [] as any[]
     repos: {
       listReleases: vi.fn(),
       listReleaseAssets: vi.fn(),
-      createRelease: vi.fn(async (params) => {
-        created.push(params)
-        return { data: { id: 99, draft: true, tag_name: params.tag_name } }
-      }),
+      createRelease: vi.fn(async (params) => ({ data: { id: 99, draft: true, tag_name: params.tag_name } })),
       deleteReleaseAsset: vi.fn(async ({ asset_id }) => { deleted.push(asset_id) }),
       uploadReleaseAsset: vi.fn(async ({ name, data }) => { uploaded.push({ name, data: data.toString() }) }),
     },
   }
   const github = {
     rest,
-    paginate: vi.fn(async (method) => (method === rest.repos.listReleases ? releases : assets)),
+    paginate: vi.fn(async (method) => (
+      method === rest.repos.listReleases ? listings[Math.min(listing++, listings.length - 1)] : assets
+    )),
   }
-  return { github, uploaded, deleted, created }
+  return { github, uploaded, deleted }
 }
 
 const core = { info: vi.fn(), notice: vi.fn(), setFailed: vi.fn() }
 const context = { repo: { owner: "beekeeper-studio", repo: "beekeeper-studio" }, sha: SHA }
+const wait = { attempts: 3, delayMs: 0 }
 
 describe("non-production release assets", () => {
   let dir: string
@@ -175,14 +178,37 @@ describe("non-production release assets", () => {
       expect(uploaded.map((u) => u.name).sort()).toEqual([...NONPROD_ASSETS].sort())
     })
 
-    it("creates the draft release when it does not exist yet", async () => {
-      const { github, created, uploaded } = fakeGithub()
-      await uploadNonProdAssets({ github, context, core }, { dir, version: "6.2.0" })
-      expect(created).toEqual([expect.objectContaining({ tag_name: "v6.2.0", draft: true, generate_release_notes: true })])
+    it("waits for studio-publish.yml's draft to be listed instead of creating one", async () => {
+      const { github, uploaded } = fakeGithub({ releases: [[], [], [{ id: 7, tag_name: "v6.2.0", draft: true }]] })
+      await uploadNonProdAssets({ github, context, core }, { dir, version: "6.2.0", wait })
+      expect(github.rest.repos.createRelease).not.toHaveBeenCalled()
+      expect(github.rest.repos.uploadReleaseAsset).toHaveBeenCalledWith(expect.objectContaining({ release_id: 7 }))
       expect(uploaded.map((u) => u.name).sort()).toEqual([
         "nonprod-Beekeeper-Studio-6.2.0-arm64.dmg",
         "nonprod-Beekeeper-Studio-Setup-6.2.0.exe",
       ])
+    })
+
+    it("fails without creating a draft when none is ever listed", async () => {
+      const { github, uploaded } = fakeGithub()
+      await uploadNonProdAssets({ github, context, core }, { dir, version: "6.2.0", wait })
+      expect(github.paginate).toHaveBeenCalledTimes(wait.attempts)
+      expect(github.rest.repos.createRelease).not.toHaveBeenCalled()
+      expect(uploaded).toEqual([])
+      expect(core.setFailed).toHaveBeenCalledWith(expect.stringMatching(/No draft release for v6.2.0/))
+    })
+
+    it("uploads to the oldest draft when the tag has two", async () => {
+      const { github } = fakeGithub({
+        releases: [
+          { id: 9, tag_name: "v6.2.0", draft: true },
+          { id: 7, tag_name: "v6.2.0", draft: true },
+          { id: 3, tag_name: "v6.1.0", draft: true },
+        ],
+      })
+      await uploadNonProdAssets({ github, context, core }, { dir, version: "6.2.0", wait })
+      const releaseIds = github.rest.repos.uploadReleaseAsset.mock.calls.map(([params]) => params.release_id)
+      expect(releaseIds).toEqual([7, 7])
     })
 
     it("replaces only its own assets on a re-run, never production ones", async () => {
