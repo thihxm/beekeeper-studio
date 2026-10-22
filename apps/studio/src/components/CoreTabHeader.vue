@@ -229,8 +229,11 @@ import _ from 'lodash'
       /** label color of the tab's database */
       tabColor() {
         if (!['query', 'table', 'table-properties'].includes(this.tab.tabType)) return null
-        // a tab on another saved connection wears that connection's color
+        // a tab on another saved connection wears its database's color, else that connection's
         if (this.tabConnection) {
+          const database = this.tab.databaseName ?? this.tabConnection.database
+          const databaseColor = this.$store.getters['databaseLabels/colorOn']?.(this.tab.targetConnectionId, database)
+          if (databaseColor) return databaseColor
           const color = this.tabConnection.config?.labelColor
           return color && color !== 'default' ? color : null
         }

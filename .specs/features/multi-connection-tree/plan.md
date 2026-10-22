@@ -67,7 +67,7 @@ flowchart TD
 | domain | New term **target connection** of a tab: the saved connection the tab runs on. `null` means the window's connection, which is every tab that exists today. `OpenTab.connectionId` keeps its meaning: the window connection whose tab list holds the tab. Code that branches on `connectionId` today: `TabModule` load/save, `tabhistory` (closed-tab history), `OpenTab.matches`. |
 | domain | `TabDatabaseMixin` stops meaning "database of the tab" only: it becomes the tab's whole connection context (client, database, dialect, features, config). Components that read the root getters `dialect`, `dialectData`, `supportedFeatures` or `usedConfig` while rendered inside a table, structure or query tab must read them from the mixin, or they show the window's dialect for a tab on another server. The build sweeps those components; 14 already use the mixin, about 40 read the root getters. |
 | behaviour | The tree gains a top level whenever at least one secondary connection is listed. With no listed connection (scope `pinned` and nothing pinned) the tree is exactly today's. |
-| behaviour | `StatusBar`'s color follows the active tab's target connection instead of always the window's. `ConnectionButton` (name, disconnect menu) keeps showing the window's connection. |
+| behaviour | `StatusBar`'s color follows the active tab's target connection instead of always the window's. `ConnectionButton` (name, disconnect menu) keeps showing the window's connection. **Amended 2026-10-22 (captain's feedback on v6.2.2):** `ConnectionButton`, the left segment of the same bar, takes the same color as `StatusBar`, so the whole bar wears one color; its name and menu still belong to the window's connection. |
 | behaviour | Four calls bypass the tab's client today and always reach the window's session: `query/execute` and `query/cancel` (sent by `ElectronUtilityConnectionClient.query` itself), `conn/resetTransactionTimeout` (`TabQueryEditor.vue:1991`) and the copy-as-IN-list / copy-as-SQL sends in `lib/menu/tableMenu.ts:176,192`. They follow the tab's client, or a query on a secondary connection could never run, cancel, keep its transaction or copy. |
 | behaviour | Opening a secondary connection records a use in `UsedConnection` (recent connections), because it goes through `conn/create`. |
 | behaviour | The pinned connections list (`pinnedConnections/orderedPins`) only resolves pins whose connection is loaded in `data/connections`, which loads per expanded folder. The tree needs every pinned or saved connection of the workspace regardless of folder state, so it reads its own full list. |
@@ -164,10 +164,12 @@ A tab opened from a secondary node runs on that connection, with its dialect, un
 26. WHILE a tab is bound to secondary connection `C`, the components rendered in that tab SHALL use `C`'s dialect, `dialectData` and `supportedFeatures` - including identifier quoting in generated SQL, the query editor's autocomplete entities (from `C`'s database), and which table-view actions are enabled
 27. WHERE secondary connection `C` has `readOnlyMode` on, its tabs SHALL disable the same editing controls a read-only window connection disables, whatever the window connection's mode
 28. WHILE a query tab is bound to secondary connection `C`, its database selector SHALL list `C`'s databases and changing it SHALL update the tab's `databaseName` only
-29. The tab header of a tab bound to secondary connection `C` SHALL show `C`'s name next to the database name, with `C`'s `labelColor` mark
+29. The tab header of a tab bound to secondary connection `C` SHALL show `C`'s name next to the database name, with `C`'s `labelColor` mark. **Amended 2026-10-22 (captain's feedback on v6.2.2):** the mark is the color of the tab's database on `C` when one is set (AC 38), else `C`'s `labelColor`
 30. The system SHALL run tabs with `targetConnectionId = NULL` exactly as before this feature
 36. WHEN a tab bound to secondary connection `C` becomes active THEN the sidebar selection key SHALL start with `` `connection::${C.id}::` `` and SHALL NOT equal the key of any item of the window's connection, so the tree never highlights a same-named entity of another server (added 2026-10-22 while deriving checks: the existing key carries only the database)
-31. The tree SHALL limit entity actions on secondary connections to View Data, View Structure, New query and Copy Name; export, import, backup, create, drop, truncate, duplicate, pin, hide and database color SHALL NOT be offered on secondary nodes
+31. The tree SHALL limit entity actions on secondary connections to View Data, View Structure, New query and Copy Name; export, import, backup, create, drop, truncate, duplicate, pin, hide and database color SHALL NOT be offered on secondary nodes. **Amended 2026-10-22 (captain's feedback on v6.2.2):** database nodes of `C` also offer Set color (AC 38); the other exclusions stand
+37. (**Amended 2026-10-22 (captain's feedback on v6.2.2):**) Every database node of the tree, of the window's connection or of secondary connection `C`, SHALL offer the same entries, New query and Set color. WHEN "New query" is chosen on a window database `d` THEN a query tab SHALL open with `targetConnectionId = NULL` and `databaseName = d`
+38. (**Amended 2026-10-22 (captain's feedback on v6.2.2):**) WHEN the user picks a color with **Set color** on database `d` of secondary connection `C` THEN the system SHALL persist it as a database label of `C` (`connectionId = C.id`, `C`'s workspace), the node SHALL show that color, and the window's database labels SHALL be unchanged; WHEN `C` connects THEN its saved database labels SHALL be loaded
 
 **Independent test:** with a Postgres window and an expanded MySQL secondary connection, open a
 MySQL table and a MySQL query tab. Queries return MySQL rows, generated SQL uses backticks, the
@@ -178,7 +180,7 @@ on MySQL.
 
 **Acceptance Criteria**
 
-32. WHILE the active tab is bound to secondary connection `C`, the status bar SHALL carry `C`'s `labelColor` class (`default` when `C` has none) instead of the window connection's
+32. WHILE the active tab is bound to secondary connection `C`, the status bar SHALL carry `C`'s `labelColor` class (`default` when `C` has none) instead of the window connection's. **Amended 2026-10-22 (captain's feedback on v6.2.2):** "the status bar" is every segment of it, including the connection name and dialect segment (`ConnectionButton`); this applies to AC 33 and 34 too
 33. WHILE the active tab has no target connection, or no tab is active, the status bar SHALL carry the window connection's `labelColor` class, as today
 34. WHEN the active tab changes between tabs of different connections THEN the status bar color SHALL change on the same render
 
@@ -190,7 +192,7 @@ tab and a blue tab and the bottom bar follows; close the blue tab and it stays r
 | Excluded | Why |
 | --- | --- |
 | Quick Search (Ctrl/Cmd+P) over secondary connections | Its index is the window connection's (`SearchModule`); a separate change |
-| Pins, hidden entities and database colors on secondary connections | Those records are keyed by the window's connection; would need their own scoping |
+| Pins and hidden entities on secondary connections | Those records are keyed by the window's connection; would need their own scoping. **Amended 2026-10-22 (captain's feedback on v6.2.2):** database colors were moved in scope (AC 38): their records already carry the saved connection's id |
 | Export, import, backup, SQL generator, create/drop/truncate on secondary connections | Same reason the previous feature hid them on non-default databases: those flows are built on the window's connection |
 | Promoting a secondary connection to the window's connection | Use the connection screen as today |
 | Plugin API awareness of secondary connections | `PluginStoreService` keeps reporting and running on the window's connection; a known limitation accepted in the captain's plan review (2026-10-22) |
@@ -228,6 +230,7 @@ lazily after a restart (AC 24), nothing reconnects on start-up.
 | screen tab on a secondary connection | error state (connection deleted) | AC 23 |
 | screen tab on a secondary connection | which connection it runs on | AC 29 |
 | screen status bar | color | AC 32-34 |
+| screen tree database node | menu entries match across connections | AC 37, 38 |
 | collection: listed connections | grouping, duplicates, the exception | AC 1, 2, 8 - no folders, the window's own connection never repeated, unsaved never listed |
 | IPC `conn/*` under a child `sId` | error shape | AC 11 - the driver error passes through unchanged |
 | IPC `conn/*` | versioning, rate limits | n/a - internal IPC, renderer and utility ship together |
@@ -235,4 +238,5 @@ lazily after a restart (AC 24), nothing reconnects on start-up.
 
 ## Sources
 
+- Captain's feedback on v6.2.2 (2026-10-22): the bottom bar was split in two colors after switching to a tab on another connection; a database of a secondary connection offered only New query, without Set color; a database of the window's connection offered only Set color, without New query.
 - User request (2026-10-21): connections as parent nodes in the tree, open databases across connections without switching, saved connections only, saved color respected, status bar color follows the connection in use, configurable pinned-only vs all saved connections.

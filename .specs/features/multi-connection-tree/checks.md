@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/multi-connection-tree/plan.md`
 
-45 checks in 4 slices · 3 one-way doors · 0 open
+50 checks in 4 slices · 3 one-way doors · 0 open
 
 Every proof runs from `apps/studio/`. `VU` = `yarn vitest:unit`. Test names avoid `'` so a `-t`
 selector survives yarn and electron (lesson L-004). Fixtures follow L-001: the same entity name
@@ -124,13 +124,13 @@ Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "r
 **C32** - A query tab bound to `C` shows `QueryDatabaseSelector` options `["audit", "shop"]`; choosing `audit` sets the tab's `databaseName` to `audit` and leaves `targetConnectionId` 7 and the window's `database` `a` unchanged (AC 28) ✅
 Proof: `VU tests/vitest/unit/components/QueryDatabaseSelector.spec.ts -t "lists and changes databases of the tab connection"`
 
-**C33** - The header of a tab bound to `C` renders text `C`'s name next to the database name and an element with class `connection-label-color-blue`; a tab with `targetConnectionId = null` renders as before (AC 29) ✅
+**C33** - The header of a tab bound to `C` renders text `C`'s name next to the database name and an element with class `connection-label-color-blue`; a tab on `C`'s `audit`, colored `orange`, renders `connection-label-color-orange` and not `blue`; a tab with `targetConnectionId = null` renders as before (AC 29) ✅
 Proof: `VU tests/vitest/unit/components/CoreTabHeader.spec.ts -t "secondary connection name and color in the tab header"`
 
 **C34** - A tab with `targetConnectionId = null` resolves the window client (`connectionFor(null)` returns the window's client object), the window's `dialect`, and its `databaseName` rules as before (AC 30) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "tabs without a target connection are unchanged"`
 
-**C35** - The context menu of an entity on `C` lists exactly View Data, View Structure, New query and Copy Name; database nodes of `C` list New query only; connection node `C` lists New query, Refresh and Disconnect. Export, import, backup, create, drop, truncate, duplicate, pin, hide and Set color are absent from all three (AC 31) ✅
+**C35** - The context menu of an entity on `C` lists exactly View Data, View Structure, New query and Copy Name; database nodes of `C` list New query and Set color (amended 2026-10-22, AC 38); connection node `C` lists New query, Refresh and Disconnect. Export, import, backup, create, drop, truncate, duplicate, pin and hide are absent from all three, and Set color from the entity and connection menus (AC 31) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "secondary nodes offer only their actions"`
 
 **C36** - Activating a tab bound to `C` on `shop.public.users`, while the window's `a` also has `public.users`, commits a selection key starting with `connection::7::` that differs from every window item key, and the tree reveals `C`'s `users` item (AC 36) ✅
@@ -167,6 +167,29 @@ Proof: `VU tests/vitest/unit/components/TableListFilterBadge.spec.ts -t "badge c
 **C45** - The app database model's `OpenTab.matches` returns `false` for two `table` tabs differing only in `targetConnectionId` (`null` vs 7, both directions) and `true` when both are 7 (door 2) ✅
 Proof: `VU tests/vitest/unit/common/appdb/tabTargetConnection.spec.ts -t "app database tab matching compares the target connection"`
 
+### Added after the captain's feedback on v6.2.2 (2026-10-22)
+
+**C46** - With the window `red` and `C` `blue`, the connection name and dialect segment (`ConnectionButton`) carries the same class as the status bar footer for each of the 4 sources of C37 (`blue`, `red`, `red`, `default`), never the other color, and switching the active tab from a `C` tab to a window tab moves it from `blue` to `red` without remounting (AC 32-34 amended) ✅
+Proof: `VU tests/vitest/unit/components/StatusBarConnectionColor.spec.ts -t "the connection segment takes the same color as the rest of the bar"`
+Proof: `VU tests/vitest/unit/components/StatusBarConnectionColor.spec.ts -t "the connection segment color changes with the active tab"`
+
+**C47** - The window's `database::a` and `database::b` and `C`'s `audit` each list exactly New query and Set color. Choosing them on `b` triggers `newQueryOnConnection` with `{ connectionId: null, database: "b" }` and `openDatabaseColorModal` with `"b"`; on `C`'s `audit`, `{ connectionId: 7, database: "audit" }` for both; New query on the window's `b` adds a query tab with `targetConnectionId = null` and `databaseName = "b"` and sends no `conn/create` (AC 37) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "databases of every connection offer New query and Set color"`
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "database menu actions act on the node connection and database"`
+Proof: `VU tests/vitest/unit/store/secondaryConnectionTabs.spec.ts -t "new query on a window database opens a window tab on that database"`
+
+**C48** - The color modal opened with `{ connectionId: 7, database: "audit" }` shows `audit`'s current color on `C` and saves `{ connectionId: 7, databaseName: "audit", color }`; opened next with `"b"` it saves `{ databaseName: "b", color }` with no connection id (AC 38) ✅
+Proof: `VU tests/vitest/unit/components/databaseColorFlow.spec.ts -t "the color modal saves the color of a secondary connection database for that connection"`
+
+**C49** - `databaseLabels/loadOn` 7 asks the app database for labels where `connectionId = 7` and `C`'s workspace, and `colorOn(7, d)` answers from them while `colorFor(d)` keeps the window's; `setColor` with `connectionId: 7` saves the label under 7 and `C`'s workspace, `default` removes it, and the window's labels never change. Through the real store and app database, opening `C` loads its saved `audit` color (and not the window's `audit` color), and a color set on `C`'s `shop` is stored with `connectionId = 7` (AC 38) ✅
+Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "loads labels of a saved connection opened from the tree"`
+Proof: `VU tests/vitest/unit/store/databaseLabels.spec.ts -t "setting a color on a saved connection opened from the tree saves it for that connection"`
+Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "connecting loads the database colors of that connection"`
+Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "a color set on a secondary database is saved for that connection"`
+
+**C50** - With `C`'s `audit` labelled `purple`, the `audit` node's `color` is `purple` and its row renders `connection-label-color-purple`; `shop`, unlabelled, has none (AC 38) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "secondary databases show their color"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -195,8 +218,11 @@ Proof: `VU tests/vitest/unit/common/appdb/tabTargetConnection.spec.ts -t "app da
 | tab entry points on secondary nodes (4) | View Data C24 · View Structure C24 · New query on connection C25 · New query on database C25 | - |
 | `targetConnectionId` values (3) | `null` C34 · an open saved connection C24 · a missing saved connection C26 | - |
 | tab target lifecycle (2) | opened this session C24 · restored after restart C27 | - |
-| secondary node menus (3) | connection C35 · database C35 · entity C35 | - |
-| status bar color sources (4) | tab on secondary C37 · tab on window C37 · no active tab C37 · secondary with `default` color C37 | - |
+| secondary node menus (3) | connection C35 · database C35, C47 · entity C35 | - |
+| database node menus (2) | window database C47 · secondary database C47 | - |
+| database color owners (2) | window's connection C48, C49 · secondary connection C48, C49, C50 | - |
+| status bar color sources (4) | tab on secondary C37, C46 · tab on window C37, C46 · no active tab C37, C46 · secondary with `default` color C37, C46 | - |
+| status bar segments (2) | `StatusBar` footer C37, C38 · `ConnectionButton` C46 | - |
 
 - Claims naming an IPC payload: C10, C11, C13, C15, C18, C20, C24, C25, C27, C30. Each proof asserts the
   sent `sId` (and `database` where named) on the message itself, through the real
@@ -222,7 +248,8 @@ Evidence:
 - `VirtualTableList` connection level: node order, colors, states, menus, filter → decides. C1-C5, C12, C14, C19, C22, C35.
 - `ElectronUtilityConnectionClient.forConnection` / `connectionForTab`: picks the session and database per tab → decides, reached across IPC. C24, C25, C27, C34.
 - Tab context reads in 18 files: each read is a pass-through of the tab's connection context → wiring, proven once per file and read by the table-driven C29.
-- `StatusBar` class binding → wiring, C37, C38.
+- `StatusBar` and `ConnectionButton` class binding → wiring, C37, C38, C46.
+- `databaseLabels` store module: window vs secondary owner, set vs `default` removal → decides. C49.
 - Closest analogue: `tests/vitest/unit/handlers/connectionFor.spec.ts` and `tests/vitest/unit/store/disconnectAfterUtilityRestart.spec.ts` (session state and the real `UtilityConnection` over `FakeUtilityProcess`), `tests/vitest/unit/components/tabDatabaseProvide.spec.ts` (tab context through provide).
 
 Cost: 7 new spec files and 4 extended ones.

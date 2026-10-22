@@ -38,6 +38,8 @@ export default Vue.extend({
     return {
       modalName: "database-color-modal",
       database: null as string | null,
+      /** the saved connection opened from the tree the database belongs to; null for the window's */
+      connectionId: null as number | null,
       color: "default",
     };
   },
@@ -47,13 +49,17 @@ export default Vue.extend({
     },
   },
   methods: {
-    open(database: string) {
+    /** a database of the window's connection, or `{ connectionId, database }` of a saved connection opened from the tree */
+    open(target: string | { connectionId: number; database: string }) {
+      const { connectionId, database } = typeof target === "string" ? { connectionId: null, database: target } : target;
       this.database = database;
-      this.color = this.$store.getters["databaseLabels/colorFor"](database) ?? "default";
+      this.connectionId = connectionId;
+      this.color = this.$store.getters["databaseLabels/colorOn"](connectionId, database) ?? "default";
       this.$modal.show(this.modalName);
     },
     async save(_event: Event, close: () => void) {
-      await this.$store.dispatch("databaseLabels/setColor", { databaseName: this.database, color: this.color });
+      const target = this.connectionId == null ? {} : { connectionId: this.connectionId };
+      await this.$store.dispatch("databaseLabels/setColor", { databaseName: this.database, color: this.color, ...target });
       close();
     },
   },

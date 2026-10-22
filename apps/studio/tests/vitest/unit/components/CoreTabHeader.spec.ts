@@ -61,7 +61,13 @@ describe("CoreTabHeader", () => {
       },
       modules: {
         tabs: { namespaced: true, state: { active: null } },
-        databaseLabels: { namespaced: true, getters: { colorFor: () => () => "green" } },
+        databaseLabels: {
+          namespaced: true,
+          getters: {
+            colorFor: () => () => "green",
+            colorOn: () => (id: number | null, db: string) => (id === 7 && db === "audit" ? "orange" : null),
+          },
+        },
       },
     });
     const mountWith = (tab: any) => mount(CoreTabHeader, {
@@ -76,6 +82,11 @@ describe("CoreTabHeader", () => {
     expect(onC.find(".tab-connection").text()).toBe("shop-mysql");
     expect(onC.find(".tab-database").text()).toBe("shop");
     expect(onC.find(".tab-color-stripe").classes()).toContain("connection-label-color-blue");
+
+    // a colored database of that connection wears its own color
+    const onAudit = mountWith({ id: 8, tabType: "query", title: "Query #1", targetConnectionId: 7, databaseName: "audit" });
+    expect(onAudit.find(".tab-color-stripe").classes()).toContain("connection-label-color-orange");
+    expect(onAudit.find(".tab-color-stripe").classes()).not.toContain("connection-label-color-blue");
 
     // a tab on the window's connection is unchanged: no connection name, the database color
     const onWindow = mountWith({ id: 7, tabType: "table", title: "users", targetConnectionId: null, databaseName: "b" });

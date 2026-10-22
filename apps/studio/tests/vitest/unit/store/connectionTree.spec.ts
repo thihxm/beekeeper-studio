@@ -85,6 +85,8 @@ describe("secondary connections in the entity tree", () => {
     for (const [name, handler] of Object.entries({
       ...(ConnHandlers as any),
       "appdb/saved/find": async () => saved,
+      "appdb/databaseLabels/find": AppDbHandlers["appdb/databaseLabels/find"],
+      "appdb/databaseLabels/setColor": AppDbHandlers["appdb/databaseLabels/setColor"],
     })) {
       handlers[name] = async (args: any) => {
         received.push({ name, sId: args.sId, database: args.database })
@@ -142,6 +144,30 @@ describe("secondary connections in the entity tree", () => {
     expect(connectionOf(7).status).toBe("connected")
     expect(connectionOf(7).databaseList).toEqual(["audit", "shop"])
     expect(connectionOf(7).databaseEntities.shop.tables.map((t: any) => t.name)).toEqual(["users"])
+  })
+
+  it("connecting loads the database colors of that connection", async () => {
+    fakeServer(C.name)
+    await AppDbHandlers["appdb/databaseLabels/setColor"]({ label: { connectionId: 7, workspaceId: -1, databaseName: "audit", color: "purple" } })
+    await AppDbHandlers["appdb/databaseLabels/setColor"]({ label: { connectionId: 3, workspaceId: -1, databaseName: "audit", color: "green" } })
+
+    expect(await store.dispatch("connectionTree/open", 7)).toBe(true)
+
+    expect(store.getters["databaseLabels/colorOn"](7, "audit")).toBe("purple")
+    expect(store.getters["databaseLabels/colorOn"](7, "shop")).toBeNull()
+  })
+
+  it("a color set on a secondary database is saved for that connection", async () => {
+    fakeServer(C.name)
+    await store.dispatch("connectionTree/open", 7)
+
+    await store.dispatch("databaseLabels/setColor", { connectionId: 7, databaseName: "shop", color: "orange" })
+
+    const rows = await AppDbHandlers["appdb/databaseLabels/find"]({ options: { where: { connectionId: 7, workspaceId: -1 } } })
+    expect(rows.map((r: any) => [r.databaseName, r.color])).toEqual([["shop", "orange"]])
+    expect(store.getters["databaseLabels/colorOn"](7, "shop")).toBe("orange")
+    // the window's databases keep their own colors
+    expect(store.getters["databaseLabels/colorFor"]("shop")).toBeNull()
   })
 
   it("a failed connect shows the error and can retry", async () => {

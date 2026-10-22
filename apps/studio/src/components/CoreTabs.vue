@@ -976,8 +976,8 @@ export default Vue.extend({
       tab.unsavedChanges = true
       this.addTab(tab)
     },
-    /** A query tab on a saved connection opened from the entity tree */
-    async createQueryOnConnection({ connectionId, database }: { connectionId: number, database?: string | null }) {
+    /** A query tab on a database of the entity tree: of a saved connection opened there, or of the window's for a null connectionId */
+    async createQueryOnConnection({ connectionId, database }: { connectionId: number | null, database?: string | null }) {
       const result = {} as TransportOpenTab
       result.tabType = 'query'
       result.title = this.getNextQueryTitle()

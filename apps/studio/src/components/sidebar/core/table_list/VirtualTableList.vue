@@ -346,7 +346,7 @@ export default Vue.extend({
             connectionId: id,
             isDefault,
             locked,
-            color: null,
+            color: this.colorOn(id, name),
             status: loaded?.status ?? "idle",
             error: loaded?.error,
             expanded: locked ? false : expanded(databaseKey, isDefault),
@@ -664,6 +664,7 @@ export default Vue.extend({
         this.busyTabs,
         // the colorFor getter returns the same function as labels change; watch the labels themselves
         this.databaseLabelRecords,
+        this.otherDatabaseLabelRecords,
         this.pins,
         this.hiddenEntityRecords,
         this.hiddenSchemaRecords,
@@ -675,6 +676,7 @@ export default Vue.extend({
       minimalMode: "minimalMode",
       dialectData: "dialectData",
       colorFor: "databaseLabels/colorFor",
+      colorOn: "databaseLabels/colorOn",
     }),
     // read without map helpers: a store without the connectionTree module lists nothing
     listedConnections(): IConnection[] {
@@ -722,12 +724,18 @@ export default Vue.extend({
         ];
       };
     },
+    /** the menu of a database of saved connection `id`: the same entries as the window's databases */
     secondaryDatabaseMenu() {
       return (id: number, database: string) => [
         {
           name: "New query",
           slug: "database-new-query",
           handler: () => this.trigger(AppEvent.newQueryOnConnection, { connectionId: id, database }),
+        },
+        {
+          name: "Set color",
+          slug: "database-color",
+          handler: () => this.trigger(AppEvent.openDatabaseColorModal, { connectionId: id, database }),
         },
       ];
     },
@@ -758,6 +766,11 @@ export default Vue.extend({
     databaseMenuOptions() {
       return [
         {
+          name: "New query",
+          slug: "database-new-query",
+          handler: ({ item }) => this.trigger(AppEvent.newQueryOnConnection, { connectionId: null, database: item }),
+        },
+        {
           name: "Set color",
           slug: "database-color",
           handler: ({ item }) => this.trigger(AppEvent.openDatabaseColorModal, item),
@@ -772,7 +785,7 @@ export default Vue.extend({
         `No permission to access database ${name} with the current account${username ? ` (${username})` : ""}`;
     },
     ...mapState("pins", ["pins"]),
-    ...mapState("databaseLabels", { databaseLabelRecords: "labels" }),
+    ...mapState("databaseLabels", { databaseLabelRecords: "labels", otherDatabaseLabelRecords: "others" }),
     ...mapState("hideEntities", {
       hiddenEntityRecords: "entities",
       hiddenSchemaRecords: "schemas",

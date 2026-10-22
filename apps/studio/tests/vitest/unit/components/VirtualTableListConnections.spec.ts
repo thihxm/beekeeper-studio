@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
 import { createLocalVue, mount, Wrapper } from "@vue/test-utils";
 import Vuex from "vuex";
 import Vue from "vue";
-import { AppEventMixin } from "@/common/AppEvent";
+import { AppEventMixin, AppEvent } from "@/common/AppEvent";
 import appStore from "@/store";
 import { ConnectionTreeModule } from "@/store/modules/ConnectionTreeModule";
+import { DatabaseLabelModule } from "@/store/modules/DatabaseLabelModule";
 import VirtualTableList from "@/components/sidebar/core/table_list/VirtualTableList.vue";
 
 // the app's own filter getters, so secondary connections are filtered like the window's
@@ -90,7 +91,7 @@ function mountTree(opts: Options = {}) {
       },
       pins: { namespaced: true, state: { pins: [] } },
       hideEntities: { namespaced: true, state: { entities: [], schemas: [] } },
-      databaseLabels: { namespaced: true, state: { labels: [] }, getters: { colorFor: () => () => null } },
+      databaseLabels: DatabaseLabelModule,
     },
   });
   wrapper = mount(VirtualTableList, {
@@ -325,9 +326,58 @@ describe("connection level of the entity tree", () => {
 
     const names = (i: any) => i.contextMenu.filter((o: any) => o.name).map((o: any) => o.name);
     expect(names(item(vm, "connection::7"))).toEqual(["New query", "Refresh", "Disconnect"]);
-    expect(names(item(vm, "connection::7::database::shop"))).toEqual(["New query"]);
+    expect(names(item(vm, "connection::7::database::shop"))).toEqual(["New query", "Set color"]);
     const users = vm.items.find((i: any) => i.connectionId === 7 && i.type === "table" && i.entity.name === "users");
     expect(names(users)).toEqual(["View Data", "View Structure", "New query", "Copy Name"]);
+  });
+
+  it("databases of every connection offer New query and Set color", async () => {
+    const { store, vm } = mountTree({ pins: [7] });
+    connectC(store);
+    await settle();
+
+    const names = (i: any) => i.contextMenu.filter((o: any) => o.name).map((o: any) => o.name);
+    expect(names(item(vm, "database::a"))).toEqual(["New query", "Set color"]);
+    expect(names(item(vm, "database::b"))).toEqual(["New query", "Set color"]);
+    expect(names(item(vm, "connection::7::database::audit"))).toEqual(["New query", "Set color"]);
+  });
+
+  it("database menu actions act on the node connection and database", async () => {
+    const { store, vm } = mountTree({ pins: [7] });
+    connectC(store);
+    await settle();
+    const newQuery = vi.fn();
+    const setColor = vi.fn();
+    vm.$root.$on(AppEvent.newQueryOnConnection, newQuery);
+    vm.$root.$on(AppEvent.openDatabaseColorModal, setColor);
+    // the menu hands each handler the node's entity, as Item.vue opens it
+    const run = (key: string, slug: string) => {
+      const node = item(vm, key);
+      node.contextMenu.find((o: any) => o.slug === slug).handler({ item: node.entity });
+    };
+
+    run("database::b", "database-new-query");
+    run("database::b", "database-color");
+    run("connection::7::database::audit", "database-new-query");
+    run("connection::7::database::audit", "database-color");
+
+    expect(newQuery.mock.calls).toEqual([[{ connectionId: null, database: "b" }], [{ connectionId: 7, database: "audit" }]]);
+    expect(setColor.mock.calls).toEqual([["b"], [{ connectionId: 7, database: "audit" }]]);
+  });
+
+  it("secondary databases show their color", async () => {
+    const { store, vm } = mountTree({ pins: [7] });
+    await settle();
+    connectC(store);
+    await settle();
+    expand(vm, "connection::7");
+    store.commit("databaseLabels/setOn", { connectionId: 7, labels: [{ id: 1, connectionId: 7, workspaceId: -1, databaseName: "audit", color: "purple" }] });
+    await settle();
+
+    expect(item(vm, "connection::7::database::audit").color).toBe("purple");
+    expect(item(vm, "connection::7::database::shop").color).toBeNull();
+    const audit = wrapper.findAll(".database-item").wrappers.find((r) => r.text().includes("audit"));
+    expect(audit.find(".connection-label-color-purple").exists()).toBe(true);
   });
 
   it("failed connection shows its error and retries", async () => {

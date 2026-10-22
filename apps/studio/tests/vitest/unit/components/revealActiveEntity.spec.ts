@@ -50,7 +50,7 @@ function mountTree(revealActiveEntity: boolean) {
     modules: {
       pins: { namespaced: true, state: { pins: [] } },
       hideEntities: { namespaced: true, state: { entities: [], schemas: [] } },
-      databaseLabels: { namespaced: true, getters: { colorFor: () => () => null } },
+      databaseLabels: { namespaced: true, getters: { colorFor: () => () => null, colorOn: () => () => null } },
     },
   });
   wrapper = mount(VirtualTableList, {
@@ -189,7 +189,7 @@ describe("revealing the active tab's table", () => {
         pinnedConnections: { namespaced: true, state: { pins: [{ connectionId: 7, position: 0 }] } },
         pins: { namespaced: true, state: { pins: [] } },
         hideEntities: { namespaced: true, state: { entities: [], schemas: [] } },
-        databaseLabels: { namespaced: true, getters: { colorFor: () => () => null } },
+        databaseLabels: { namespaced: true, getters: { colorFor: () => () => null, colorOn: () => () => null } },
       },
     });
     store.commit("connectionTree/update", { id: 7, changes: { status: "connected", connectionType: "mysql", database: "shop", databaseList: ["audit", "shop"] } });
