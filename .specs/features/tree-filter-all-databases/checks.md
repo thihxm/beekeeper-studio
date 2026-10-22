@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/tree-filter-all-databases/plan.md`
 
-10 checks in 1 slice · 0 one-way doors · 0 open
+12 checks in 1 slice · 0 one-way doors · 0 open
 
 Every proof runs from `apps/studio/`. `VU` = `yarn vitest:unit`. The tree proofs mount
 `VirtualTableList` with the app's real `filteredTables`, `filteredRoutines` and `schemaTables`
@@ -45,13 +45,20 @@ Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "hidde
 **C10** - With filter `use`, a locked `b` whose entities (`users`, `events`) were loaded before the lock is in `displayItems` with `expanded` false, and none of `b`'s tables is displayed (AC 3) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "keeps a locked database collapsed even when its entities were loaded"`
 
+**C11** - With filter `use`, a locked `b` whose loaded entities (`events`) have no match is still in `displayItems`, with `expanded` false (AC 3) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "keeps a locked database listed when its loaded entities have no match"`
+
+**C12** - With filter `user_c`, a loaded `b` whose only match is the routine `user_count` is in `displayItems`, and the displayed routines are exactly `b:user_count` (AC 1 - every entity includes routines) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListFilter.spec.ts -t "a matching routine opens its database"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
 | --- | --- | --- |
 | plan Landing doors (0) | none - the plan's Landing is `None` | - |
-| database node state while filtering (9) | default with match C1 · default without match C8 · loaded with match C1 · loaded without match C2 · idle C3 · loading C3 · error C3 · locked C3 · locked with loaded entities C10 | - |
+| database node state while filtering (10) | default with match C1 · default without match C8 · loaded with match C1 · loaded without match C2 · idle C3 · loading C3 · error C3 · locked C3 · locked, loaded, with a match C10 · locked, loaded, without a match C11 | - |
 | node kinds opened by the filter (2) | database C1 · schema C1 | - |
+| entity kinds that count as a match (2) | table C1 · routine C12 | - |
 | entities that do not count as a match (2) | hidden entity C9 · entity under a hidden schema C9 | - |
 | filter transitions (3) | empty → set C1 · set while a database loads C4 · set → empty C5 | - |
 | expansion sources restored on clear (2) | stored before the filter C5 · clicked during the filter C5 | - |
@@ -101,3 +108,4 @@ Size from `wc -c` on the files the slice touches, divided by 4:
 - **Settled mid-build:** the red run reproduced the diagnosis before any change: C1, C2, C4, C5 and C6 failed on today's code, C3 and C7 (the "as today" cases) passed. A hidden entity, or one under a hidden schema, does not open its database or schema while filtering.
 - **Abandoned:** none
 - **Settled after verification round 1:** the Verifier found a surviving mutant (the default database with no match had no check), a C5 proof selector that ran no test (the apostrophe is lost through yarn and electron; the pattern now uses `.`), two unproven members (hidden matches, a locked database with loaded entities), and C1's wording naming `log`/`lo` where its test asserts `user_log`/`use` (same property; the text now matches the test). C8-C10 were added with their tests. C10 was red and found a real bug: a locked database with entities loaded before the lock opened while filtering; `openedByFilter` and `filteredOut` now leave locked databases alone. No existing assertion or test was changed.
+- **Settled after verification round 2:** round 1's gaps were closed. Two new gaps were found: removing `!item.locked` from `filteredOut` survived, because C10's locked database always had a match; and no fixture had a routine, so routine matches were unproven. C11 and C12 were added. Both pass on the current code, and each fails under its mutant, which the author ran before handing back. No existing assertion or test was changed.

@@ -250,4 +250,32 @@ describe("VirtualTableList filter across loaded databases", () => {
     expect(b.expanded).toBe(false);
     expect(shownTables(vm).filter((t: string) => t.startsWith("b:"))).toEqual([]);
   });
+
+  it("keeps a locked database listed when its loaded entities have no match", async () => {
+    const { store, vm } = mountList({
+      databaseEntities: { b: loaded(table("events")) },
+      inaccessibleDatabases: ["b"],
+    });
+    await settle();
+
+    await setFilter(store, "use");
+
+    const b = databaseItem(vm, "b");
+    expect(vm.displayItems).toContain(b);
+    expect(b.expanded).toBe(false);
+  });
+
+  it("a matching routine opens its database", async () => {
+    const userCount = { name: "user_count", schema: "public", type: "function", entityType: "routine", routineParams: [] };
+    const { store, vm } = mountList({
+      databaseEntities: { b: { status: "loaded", tables: [table("events")], routines: [userCount] } },
+    });
+    await settle();
+
+    await setFilter(store, "user_c");
+
+    expect(shownDatabases(vm)).toContain("b");
+    const routines = vm.displayItems.filter((i: any) => i.type === "routine").map((i: any) => `${i.database}:${i.entity.name}`);
+    expect(routines).toEqual(["b:user_count"]);
+  });
 });
