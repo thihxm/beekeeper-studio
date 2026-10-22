@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `.specs/features/multi-connection-tree/plan.md`
 
-38 checks in 4 slices · 3 one-way doors · 0 open
+45 checks in 4 slices · 3 one-way doors · 0 open
 
 Every proof runs from `apps/studio/`. `VU` = `yarn vitest:unit`. Test names avoid `'` so a `-t`
 selector survives yarn and electron (lesson L-004). Fixtures follow L-001: the same entity name
@@ -40,7 +40,7 @@ Proof: `VU tests/vitest/unit/components/connectionTreeScopeMenu.spec.ts -t "scop
 **C7** - After the saved-connection list changes (a pin added, a connection renamed, recolored, created and deleted), the next rebuild shows the change and no `conn/*` message is sent under `w1` (AC 7) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "connection level follows saved connection changes"`
 
-**C8** - With scope `all` and the window connected to an unsaved config (no `id`), plus a used-connection record for an unsaved config, only saved connections appear after the window node (AC 8) ✅
+**C8** - With scope `all` and the window connected to an unsaved config (no `id`), only saved connections appear after the window node; with scope `pinned` and a pin `50` that names a used-connection record never saved, the pin is not listed (AC 8) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "never lists unsaved connections"`
 
 **C9** - With `connectionTreeScope = "off"` and pins `[7, 9]`, the tree has 0 connection nodes (AC 35) ✅
@@ -60,8 +60,9 @@ Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "
 **C13** - When `conn/create` for `C` rejects with `ER_ACCESS_DENIED_ERROR: Access denied for user`, node `C` shows that message and a Retry control, retry sends `conn/create` again, and in the utility `state("w1::connection::7").server` is `null` after the failure (AC 11) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "a failed connect shows the error and can retry"`
 Proof: `VU tests/vitest/unit/handlers/childSession.spec.ts -t "a failed create leaves the child session without a server"`
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "failed connection shows its error and retries"`
 
-**C14** - After `C` connects with `databaseList = ["audit", "shop"]` and default `shop`, the tree shows database nodes `audit` and `shop` under `C`, `shop` expanded with its tables, `audit` collapsed; for `D`'s dialect with `disabledFeatures.multipleDatabases`, `D`'s schema/table items are direct children of `D` (AC 12) ✅
+**C14** - After `C` connects with `databaseList = ["audit", "shop"]` and default `shop`, the tree shows database nodes `audit` and `shop` under `C`, `shop` expanded with its tables, `audit` collapsed; for a SQLite saved connection `E` (id 11, a dialect with `disabledFeatures.multipleDatabases`), `E`'s table items are direct children of `E` (AC 12; the text named `D`, the test always used the SQLite connection - corrected after verification round 1) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "connected secondary connection renders its databases"`
 
 **C15** - Expanding `C`'s `audit` sends `conn/listTables` with `sId === "w1::connection::7"` and `database === "audit"` (AC 13) ✅
@@ -78,6 +79,7 @@ Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "disconnect closes 
 
 **C19** - With a tab bound to `C` that has an active transaction (and separately one with a reserved connection), `C`'s "Disconnect" menu item is disabled; with neither, it is enabled (AC 17) ✅
 Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "disconnect is disabled while a tab transaction is open"`
+Proof: `VU tests/vitest/unit/components/secondaryConnectionProvide.spec.ts -t "query tab transactions keep its connection from disconnecting"`
 
 **C20** - With `C` and `D` connected, the store's `disconnect` (and separately `rollbackConnection`) sends `conn/disconnect` for `w1::connection::7` and `w1::connection::9` before the window's own `conn/disconnect`, and `connectionTree` is empty afterwards (AC 18) ✅
 Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "window disconnect closes every secondary connection"`
@@ -108,11 +110,13 @@ Proof: `VU tests/vitest/unit/store/secondaryConnectionTabs.spec.ts -t "restored 
 **C28** - `matches()` returns `false` for two `table` tabs (and two `query` tabs) equal except `targetConnectionId` `null` vs `7`, and `true` when both are `7` (AC 25, door 2) ✅
 Proof: `VU tests/vitest/unit/transport/TransportOpenTab.spec.ts -t "target connection distinguishes tabs"`
 
-**C29** - Inside a tab bound to `C` (MySQL) in a Postgres window, every one of the 18 tab-rendered files that reads window state resolves `C`'s value instead: `dialect` `mysql`, `dialectData` of mysql, `connectionType` `mysql`, `supportedFeatures` of `C`, `defaultSchema` of `C`, `usedConfig` of `C`, the database list of `C`, and `tablesFor` from `C`'s entities. The test is table-driven over the 18 files and the reads each one makes (AC 26) ✅
+**C29** - Inside a tab bound to `C` (MySQL) in a Postgres window, every one of the 18 tab-rendered files that reads window state resolves `C`'s value instead: `dialect` `mysql`, `dialectData` of mysql, `connectionType` `mysql`, `supportedFeatures` of `C`, `defaultSchema` of `C`, `usedConfig` of `C`, the database list of `C`, and `tablesFor` from `C`'s entities. The test is table-driven over 16 of the files and the reads each one makes; `fk_click` is asserted in the same test and `tableMenu` in C30. The query, table and structure tabs hand the connection to their children through their real `provide` (AC 26; "over the 18" corrected after verification round 1) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "tab components read the secondary connection"`
+Proof: `VU tests/vitest/unit/components/secondaryConnectionProvide.spec.ts -t "children run on the tab connection"`
 
 **C30** - For a tab bound to `C`, the copy-as-SQL and copy-as-IN-list actions send `conn/getInsertQuery` / `conn/listTableColumns`, and the query tab's transaction keep-alive sends `conn/resetTransactionTimeout`, each with `sId === "w1::connection::7"` (AC 26) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "direct sends follow the tab connection"`
+Proof: `VU tests/vitest/unit/components/secondaryConnectionProvide.spec.ts -t "query tab keep alive goes to its connection"`
 
 **C31** - With `C.readOnlyMode = true` and the window's `false`, a tab bound to `C` disables the same controls as a read-only window: `TableTable`'s add-row and import actions, `QueryEditorStatusBar` result editing, `TableSchema`/`TableIndexes`/`TableRelations` edit controls; with `C.readOnlyMode = false` and the window's `true`, they are enabled (AC 27) ✅
 Proof: `VU tests/vitest/unit/components/secondaryConnectionContext.spec.ts -t "read only follows the tab connection"`
@@ -140,11 +144,34 @@ Proof: `VU tests/vitest/unit/components/StatusBarConnectionColor.spec.ts -t "sta
 **C38** - Switching the active tab from a `C` tab to a window tab changes the footer class from `blue` to `red` on the next tick, without remounting (AC 34) ✅
 Proof: `VU tests/vitest/unit/components/StatusBarConnectionColor.spec.ts -t "status bar color changes with the active tab"`
 
+### Added after verification round 1
+
+**C39** - Under connected `C` with `databaseList = ["audit", "secret", "shop"]` and `secret` inaccessible, the `secret` node is locked, collapsed, and stays collapsed when expanded; `shop` loaded with tables in schemas `app` and `sales` renders two schema nodes under `shop`, with `users` under `app` (AC 12) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "secondary connection shows locked databases and schema groups"`
+
+**C40** - For a Snowflake saved connection with MFA-code auth, expanding it calls `BeekeeperPlugin.promptSnowflakeMFAPasscode`; cancelled → no `conn/create` and the node stays `idle`; passcode `123456` → `conn/create` carries `config.snowflakeOptions.passcode === "123456"` (AC 15) ✅
+Proof: `VU tests/vitest/unit/store/connectionTree.spec.ts -t "snowflake MFA prompt cancel leaves the connection closed"`
+
+**C41** - With filter `use`, not-connected `D`, and `C`'s `audit` (idle), `secret` (locked) and `staging` (error) are each displayed, collapsed, with no child displayed (AC 20 - filter rule 3) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "filter keeps unloaded secondary nodes collapsed"`
+
+**C42** - With filter `use` set, committing `C`'s `audit` as loaded with `user_audit` displays `user_audit` while `audit` stays collapsed (AC 20 - filter rule 4) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "filter shows a secondary database that loads during the filter"`
+
+**C43** - After filter `use` is cleared, `C` is collapsed again and none of its tables is displayed (AC 20 - filter rule 5) ✅
+Proof: `VU tests/vitest/unit/components/VirtualTableListConnections.spec.ts -t "clearing the filter restores secondary expansion"`
+
+**C44** - With filter `use`, the window's `a` (3 entities) and loaded `b` (2), plus `C`'s loaded `shop` (`users`, `orders`) and loading `audit`, the badge reads `3 / 7` (AC 20 - filter rule 6) ✅
+Proof: `VU tests/vitest/unit/components/TableListFilterBadge.spec.ts -t "badge counts secondary connections"`
+
+**C45** - The app database model's `OpenTab.matches` returns `false` for two `table` tabs differing only in `targetConnectionId` (`null` vs 7, both directions) and `true` when both are 7 (door 2) ✅
+Proof: `VU tests/vitest/unit/common/appdb/tabTargetConnection.spec.ts -t "app database tab matching compares the target connection"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
 | --- | --- | --- |
-| plan Landing doors (3) | door 1 child session C10 · door 2 `targetConnectionId` C23, C28 · door 3 `connectionTreeScope` C6 | - |
+| plan Landing doors (3) | door 1 child session C10 · door 2 `targetConnectionId` C23, C28, C45 · door 3 `connectionTreeScope` C6 | - |
 | `connectionTreeScope` values (4) | absent C1 · `off` C9 · `pinned` C1, C3 · `all` C2 | - |
 | connection list sources (2) | pins C1 · every saved connection of the workspace C2 | - |
 | connections never listed (3) | the window's own C1 · unsaved window config C8 · used-only record C8 | - |
@@ -152,11 +179,16 @@ Proof: `VU tests/vitest/unit/components/StatusBarConnectionColor.spec.ts -t "sta
 | connection node states (4) | idle C17 · connecting C12 · connected C14 · error C13 | - |
 | connection node transitions (4) | idle → connecting C11 · connecting → error C13 · error → connecting (retry) C13 · connected → idle (disconnect) C18 | - |
 | secondary dialect shape (2) | multiple databases C14 · `multipleDatabases` disabled C14 | - |
-| ephemeral prompt outcomes (2) | cancelled C17 · value given C17 | - |
+| secondary item kinds (5) | connection C14 · database C14 · locked database C39 · schema group C39 · entity C14 | - |
+| filter rules on secondary connections, `tree-filter-all-databases` AC 1-6 (6) | 1 matches shown C22 · 2 no-match hidden C22 · 3 unloaded collapsed C41 · 4 loads while filtering C42 · 5 expansion restored C43 · 6 badge C44 | - |
+| ephemeral prompts (2) | CockroachDB JWT C17 · Snowflake MFA C40 | - |
+| ephemeral prompt outcomes (2) | cancelled C17, C40 · value given C17, C40 | - |
 | Disconnect guard (3) | active transaction C19 · reserved connection C19 · neither C19 | - |
+| Disconnect guard sources (2) | the query tab's transaction state C19 · the tree's menu C19 | - |
 | session teardown places (3) | node Disconnect C18 · window `disconnect` / `rollbackConnection` C20 · utility `close` C21 | - |
 | messages that must carry the child `sId` (8) | `conn/create` C11 · `conn/listTables` C15 · `conn/selectTop` C24 · `conn/query` C25 · `query/execute` C25 · `query/cancel` C25 · `conn/resetTransactionTimeout` C30 · copy sends C30 | - |
-| tab-rendered files reading window state (18) | C29, table-driven over all 18 (TabQueryEditor, TableTable, TabTableProperties, TabWithTable, ResultTable, QueryEditorStatusBar, QueryEditHistory, QueryDatabaseSelector, StatusBar, RowFilterBuilder, BuilderFilter, TableSchema, TableIndexes, TableRelations, TableTriggers, TablePartitions, fk_click, tableMenu) | - |
+| tab-rendered files reading window state (18) | TabQueryEditor C29 · TableTable C29 · TabTableProperties C29 · TabWithTable C29 · ResultTable C29 · QueryEditorStatusBar C29 · QueryEditHistory C29 · QueryDatabaseSelector C29 · StatusBar C29 · RowFilterBuilder C29 · BuilderFilter C29 · TableSchema C29 · TableIndexes C29 · TableRelations C29 · TableTriggers C29 · TablePartitions C29 · fk_click C29 · tableMenu C30 | - |
+| tabs that provide their connection to children (3) | TableTable C29 · TabTableProperties C29 · TabQueryEditor C29 | - |
 | window reads per tab (8) | `dialect` C29 · `dialectData` C29 · `connectionType` C29 · `supportedFeatures` C29 · `defaultSchema` C29 · `usedConfig` C29, C31 · database list C29, C32 · `tablesFor` C29 | - |
 | tab entry points on secondary nodes (4) | View Data C24 · View Structure C24 · New query on connection C25 · New query on database C25 | - |
 | `targetConnectionId` values (3) | `null` C34 · an open saved connection C24 · a missing saved connection C26 | - |
@@ -220,3 +252,4 @@ Size from `wc -c` on the files each slice touches, divided by 4:
 - **Boundary:** C1-C38 closed at `012a026a6` (one builder)
 - **Settled mid-build:** tests were written with the code rather than strictly red first; the Verifier's fault injection is the guard for that. Two legacy tests faked `this` without the new `tabConnectionId` and asserted the old call arity: `tabDatabaseColumns.spec.ts` now passes `tabConnectionId: () => null` and asserts `tablesFor("b", null)` (still exact). Copy-as-SQL / copy-as-IN-list used to send `conn/*` without the tab's database either; they now go through the tab's client (`connection` option of `copyActionsMenu`), which also fixes them for non-default databases. `TablePartitions` read `this.dialect` that was never mapped; the mixin now provides it. `src/migration/index.js` exports `realMigrations` so the migration proof can find its entry without running every migration.
 - **Abandoned:** routing `query/*` through `database` like `conn/*` - the query handlers ignore it; they now go to the client's session (`sendToSession`).
+- **Settled after verification round 1:** the Verifier found the tabs' real `provide` of `tabConnectionId` unproven (a mutant survived in `TabTableProperties`), the query tab's busy and keep-alive wiring run only below the tab, the node's error/Retry not rendered in a test, AC 12 (locked databases, schema groups), AC 15 (Snowflake MFA) and AC 20 filter rules 3-6 without rows, a C8 assertion that could not fail, and `OpenTab.matches` untested. Added C39-C45 and proof lines on C13, C19, C29 and C30; the author re-ran the surviving mutant and it now fails. AC 20 rule 6 found a real gap: the badge did not count secondary connections, and `TableList` now does. C14 and C29's text were corrected to what their tests prove. No existing assertion or test was weakened.
