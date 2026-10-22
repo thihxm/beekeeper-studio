@@ -37,7 +37,7 @@ import {
   ConfigurationModule,
   BundledPluginModule,
 } from '@commercial/backend/plugin-system/modules';
-import { PluginErrorCode, PluginSystemErrorCode } from '@/lib/errors';
+import { PluginErrorCode, PluginSystemErrorCode, errorMessage } from '@/lib/errors';
 
 import * as sms from 'source-map-support'
 import { WorkspaceHandlers } from '@/handlers/workspaceHandlers';
@@ -160,7 +160,7 @@ async function runHandler(id: string, name: string, args: any) {
       .catch((e) => {
         replyArgs.type = 'error';
         replyArgs.stack = e?.stack;
-        replyArgs.error = e?.message ?? e;
+        replyArgs.error = errorMessage(e);
         replyArgs.errorName = e?.name;
         replyArgs.errorCode = e?.code;
         replyArgs.errorDetail = e?.detail

@@ -317,7 +317,7 @@ export default Vue.extend({
       let tableData = this.findTable(schema, table)
 
       if (tableData?.columns == null) {
-        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tabDatabase(), table: tableData })
+        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tabDatabase(), table: tableData, targetConnectionId: this.tabConnectionId() })
         tableData = this.findTable(schema, table)
       }
 
