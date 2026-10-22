@@ -215,4 +215,4 @@ Size from `wc -c` on the files each slice touches, divided by 4:
 - S4 = 1 KB → 141k
 - Test templates and fixtures ≈ 12k, for **≈ 153k, over the 150k budget**
 - Proposed cut, at the surface boundary: batch 1 = S1 + S2 (the tree and the child sessions, ≈ 45k with their tests); batch 2 = S3 + S4 (tabs, dialect context, status bar, ≈ 110k with their tests), on green only
-- Mechanism: pending - asked firstmate (handoff vs one builder)
+- Mechanism: one builder, compaction accepted - firstmate decision 2026-10-22 (the estimate is ~2% over the budget)
