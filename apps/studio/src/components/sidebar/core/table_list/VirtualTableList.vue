@@ -8,7 +8,7 @@
     :data-component="itemComponent"
     :estimate-size="estimateItemHeight"
     :keeps="keeps"
-    :extra-props="{ onExpand: handleExpand, onPin: handlePin, onRetry: handleRetry, lockedTitle }"
+    :extra-props="{ onExpand: handleExpand, onPin: handlePin, onRetry: handleRetry, lockedTitle, isOpen }"
   />
 </template>
 
@@ -282,9 +282,13 @@ export default Vue.extend({
     },
     isVisible(item: Item) {
       for (let parent = item.parent; parent; parent = parent.parent) {
-        if (parent.hidden || !(parent.expanded || this.openedByFilter(parent))) return false;
+        if (parent.hidden || !this.isOpen(parent)) return false;
       }
       return true;
+    },
+    /** What a node shows: what the user expanded, or opened by the filter */
+    isOpen(item: BaseItem) {
+      return item.expanded || this.openedByFilter(item);
     },
     /** While filtering, nodes with a match show open without touching what the user expanded */
     openedByFilter(item: BaseItem) {

@@ -103,6 +103,13 @@ const shownDatabases = (vm: any) =>
   vm.displayItems.filter((i: any) => i.type === "database").map((i: any) => i.entity);
 const databaseItem = (vm: any, name: string) => vm.items.find((i: any) => i.key === `database::${name}`);
 
+/** whether the chevron of the rendered database or schema row named `name` shows open */
+const chevronOpen = (name: string, row = ".database-item") => {
+  const rows = wrapper.findAll(`${row} .folder-btn`).filter((r) => r.find(".table-name").text() === name);
+  expect(rows.length).toBe(1);
+  return rows.at(0).classes().includes("open");
+};
+
 beforeAll(() => {
   (globalThis as any).ResizeObserver = class { observe() {} disconnect() {} };
 });
@@ -277,5 +284,52 @@ describe("VirtualTableList filter across loaded databases", () => {
     expect(shownDatabases(vm)).toContain("b");
     const routines = vm.displayItems.filter((i: any) => i.type === "routine").map((i: any) => `${i.database}:${i.entity.name}`);
     expect(routines).toEqual(["b:user_count"]);
+  });
+
+  it("shows a filter-opened node's chevron open, and the stored state after clearing", async () => {
+    const { store, vm } = mountList({
+      databaseEntities: { b: loaded(table("users"), table("sales", "reporting")) },
+    });
+    await settle();
+    expect(chevronOpen("b")).toBe(false);
+    expect(chevronOpen("audit", ".schema-item:not(.database-item)")).toBe(false);
+
+    await setFilter(store, "user");
+
+    expect(chevronOpen("b")).toBe(true);
+    expect(chevronOpen("audit", ".schema-item:not(.database-item)")).toBe(true);
+    expect(databaseItem(vm, "b").expanded).toBe(false);
+
+    await setFilter(store, null);
+
+    expect(chevronOpen("b")).toBe(false);
+    expect(chevronOpen("audit", ".schema-item:not(.database-item)")).toBe(false);
+    expect(chevronOpen("a")).toBe(true);
+  });
+
+  it("shows a filter-opened schema's chevron open in single-database dialects", async () => {
+    const { store } = mountList({ multipleDatabasesDisabled: true });
+    await settle();
+    expect(chevronOpen("audit", ".schema-item")).toBe(false);
+
+    await setFilter(store, "user_l");
+
+    expect(chevronOpen("audit", ".schema-item")).toBe(true);
+
+    await setFilter(store, null);
+
+    expect(chevronOpen("audit", ".schema-item")).toBe(false);
+  });
+
+  it("keeps a locked database's chevron closed while filtering", async () => {
+    const { store } = mountList({
+      databaseEntities: { b: loaded(table("users")) },
+      inaccessibleDatabases: ["b"],
+    });
+    await settle();
+
+    await setFilter(store, "use");
+
+    expect(chevronOpen("b")).toBe(false);
   });
 });
