@@ -312,7 +312,8 @@ describe("VirtualTableList filter across loaded databases", () => {
     await settle();
     expect(chevronOpen("audit", ".schema-item")).toBe(false);
 
-    await setFilter(store, "user_l");
+    // matches in two schemas (`public.users`, `audit.user_log`): a lone schema group renders no folder
+    await setFilter(store, "user");
 
     expect(chevronOpen("audit", ".schema-item")).toBe(true);
 
