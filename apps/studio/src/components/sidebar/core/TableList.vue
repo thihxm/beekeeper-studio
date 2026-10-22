@@ -251,9 +251,13 @@
       },
       /** entities of the non-default databases loaded in the tree */
       otherLoadedEntities() {
-        return Object.entries(this.databaseEntities ?? {})
-          .filter(([name, loaded]: [string, any]) => name !== this.database && loaded.status === 'loaded')
+        const loadedOf = (entities: Record<string, any>, skip: string | null) => Object.entries(entities ?? {})
+          .filter(([name, loaded]: [string, any]) => name !== skip && loaded.status === 'loaded')
           .map(([, loaded]: [string, any]) => [...loaded.tables, ...loaded.routines])
+        // saved connections opened from the tree count too, every loaded database of each
+        const secondary = Object.values(this.$store.state.connectionTree?.connections ?? {})
+          .flatMap((connection: any) => loadedOf(connection.databaseEntities, null))
+        return [...loadedOf(this.databaseEntities, this.database), ...secondary]
       },
       totalEntities() {
         const others = _.sumBy(this.otherLoadedEntities, 'length')

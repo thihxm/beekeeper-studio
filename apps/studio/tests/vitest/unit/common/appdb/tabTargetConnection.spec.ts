@@ -31,4 +31,11 @@ describe('tabs bound to a target connection', () => {
     expect((await OpenTab.findOneBy({ id: bound.id })).targetConnectionId).toBe(7)
     expect((await OpenTab.findOneBy({ id: plain.id })).targetConnectionId).toBeNull()
   })
+
+  it('app database tab matching compares the target connection', () => {
+    const tab = (targetConnectionId: number | null) => new OpenTab().withProps({ tabType: 'table', tableName: 'users', schemaName: 'public', entityType: 'table', databaseName: 'shop', targetConnectionId } as any)
+    expect(tab(null).matches(tab(7), 'a')).toBe(false)
+    expect(tab(7).matches(tab(null), 'a')).toBe(false)
+    expect(tab(7).matches(tab(7), 'a')).toBe(true)
+  })
 })

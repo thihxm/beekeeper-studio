@@ -219,12 +219,15 @@ describe("connection level of the entity tree", () => {
   });
 
   it("never lists unsaved connections", async () => {
+    // the window runs on an unsaved config, and pin 50 points at a used-connection record that was never saved
     const unsaved = { id: null, name: "quick", connectionType: "postgresql" };
     const { vm } = mountTree({ scope: "all", usedConfig: unsaved, saved: [C, D] });
     await settle();
-
     expect(connectionIds(vm)).toEqual(["window", 9, 7]);
-    expect(connectionNodes(vm).map((i: any) => i.entity)).not.toContain("quick (used)");
+
+    const pinned = mountTree({ scope: "pinned", usedConfig: unsaved, saved: [C, D], pins: [50, 7] });
+    await settle();
+    expect(connectionIds(pinned.vm)).toEqual(["window", 7]);
   });
 
   it("off scope hides the connection level", async () => {
@@ -325,5 +328,93 @@ describe("connection level of the entity tree", () => {
     expect(names(item(vm, "connection::7::database::shop"))).toEqual(["New query"]);
     const users = vm.items.find((i: any) => i.connectionId === 7 && i.type === "table" && i.entity.name === "users");
     expect(names(users)).toEqual(["View Data", "View Structure", "New query", "Copy Name"]);
+  });
+
+  it("failed connection shows its error and retries", async () => {
+    const { store, vm, send } = mountTree({ pins: [7] });
+    store.commit("connectionTree/update", { id: 7, changes: { status: "error", error: "ER_ACCESS_DENIED_ERROR: Access denied for user" } });
+    await settle();
+
+    const status = wrapper.find(".connection-item .connection-status.error");
+    expect(status.text()).toContain("Access denied for user");
+    send.mockClear();
+    await status.find(".retry").trigger("click");
+    await settle();
+
+    expect(send.mock.calls.some(([name]) => name === "conn/create")).toBe(true);
+    expect(item(vm, "connection::7")).toBeDefined();
+  });
+
+  it("secondary connection shows locked databases and schema groups", async () => {
+    const { store, vm } = mountTree({ pins: [7] });
+    connectC(store, { databaseList: ["audit", "secret", "shop"], inaccessibleDatabases: ["secret"] });
+    store.commit("connectionTree/databaseEntities", {
+      id: 7,
+      database: "shop",
+      entities: { status: "loaded", tables: [table("users", "app"), table("orders", "sales")], routines: [] },
+    });
+    await settle();
+    expand(vm, "connection::7");
+
+    const secret = item(vm, "connection::7::database::secret");
+    expect(secret.locked).toBe(true);
+    expect(secret.expanded).toBe(false);
+    vm.handleExpand(null, secret);
+    expect(secret.expanded).toBe(false);
+
+    const shop = item(vm, "connection::7::database::shop");
+    const schemas = vm.items.filter((i: any) => i.type === "schema" && i.parent === shop).map((i: any) => i.entity);
+    expect(schemas).toEqual(["app", "sales"]);
+    const users = vm.items.find((i: any) => i.connectionId === 7 && i.entity?.name === "users");
+    expect(users.parent.type).toBe("schema");
+    expect(users.parent.entity).toBe("app");
+  });
+
+  it("filter keeps unloaded secondary nodes collapsed", async () => {
+    const { store, vm } = mountTree({ pins: [7, 9] });
+    connectC(store, { databaseList: ["audit", "secret", "shop", "staging"], inaccessibleDatabases: ["secret"] });
+    store.commit("connectionTree/databaseEntities", { id: 7, database: "staging", entities: { status: "error", tables: [], routines: [], error: "boom" } });
+    await settle();
+
+    store.commit("filterQuery", "use");
+    await settle();
+
+    // D is not connected; C's audit is idle, secret locked, staging failed
+    for (const key of ["connection::9", "connection::7::database::audit", "connection::7::database::secret", "connection::7::database::staging"]) {
+      const node = item(vm, key);
+      expect(vm.displayItems).toContain(node);
+      expect(node.expanded).toBe(false);
+      expect(vm.displayItems.filter((i: any) => i.parent === node)).toEqual([]);
+    }
+  });
+
+  it("filter shows a secondary database that loads during the filter", async () => {
+    const { store, vm } = mountTree({ pins: [7] });
+    connectC(store);
+    await settle();
+    store.commit("filterQuery", "use");
+    await settle();
+    expect(vm.displayItems.some((i: any) => i.connectionId === 7 && i.entity?.name === "user_audit")).toBe(false);
+
+    store.commit("connectionTree/databaseEntities", { id: 7, database: "audit", entities: { status: "loaded", tables: [table("user_audit", null)], routines: [] } });
+    await settle();
+
+    expect(vm.displayItems.some((i: any) => i.connectionId === 7 && i.entity?.name === "user_audit")).toBe(true);
+    expect(item(vm, "connection::7::database::audit").expanded).toBe(false);
+  });
+
+  it("clearing the filter restores secondary expansion", async () => {
+    const { store, vm } = mountTree({ pins: [7] });
+    connectC(store);
+    await settle();
+    store.commit("filterQuery", "use");
+    await settle();
+    expect(vm.displayItems.some((i: any) => i.connectionId === 7 && i.entity?.name === "users")).toBe(true);
+
+    store.commit("filterQuery", null);
+    await settle();
+
+    expect(item(vm, "connection::7").expanded).toBe(false);
+    expect(vm.displayItems.some((i: any) => i.connectionId === 7 && i.type === "table")).toBe(false);
   });
 });

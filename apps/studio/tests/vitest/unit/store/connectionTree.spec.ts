@@ -17,6 +17,7 @@ import { BeekeeperPlugin } from "@/plugins/BeekeeperPlugin"
 import { FakeUtilityProcess } from "@tests/vitest/lib/FakeUtilityProcess"
 import { TestOrmConnection } from "@tests/lib/TestOrmConnection"
 import { AppDbHandlers } from "@/handlers/appDbHandlers"
+import { SnowflakeAuthType } from "@/lib/db/types"
 
 const W1 = "w1"
 const C_KEY = "w1::connection::7"
@@ -24,6 +25,7 @@ const WINDOW_CONFIG = { id: 3, name: "app", connectionType: "postgresql", worksp
 const C = { id: 7, name: "shop-mysql", connectionType: "mysql", defaultDatabase: "shop", workspaceId: -1, labelColor: "blue" } as any
 const D = { id: 9, name: "reports", connectionType: "postgresql", defaultDatabase: "reports", workspaceId: -1, labelColor: "default" } as any
 const ROACH = { id: 11, name: "roach", connectionType: "cockroachdb", workspaceId: -1, options: { jwtAuthEnabled: true }, password: null } as any
+const SNOW = { id: 13, name: "snow", connectionType: "snowflake", workspaceId: -1, snowflakeOptions: { authType: SnowflakeAuthType.MFACode } } as any
 
 /** A fake server: one client per database, all answering like a MySQL server with `shop` and `audit` */
 function fakeServer(name: string, opts: { failConnect?: Error, slowConnect?: Promise<void> } = {}) {
@@ -74,7 +76,7 @@ describe("secondary connections in the entity tree", () => {
     received = []
     // complete configs, as the renderer gets them from the app database
     const full = async (c: any) => ({ ...(await AppDbHandlers["appdb/saved/new"]({ init: c })), ...c })
-    const saved = await Promise.all([WINDOW_CONFIG, C, D, ROACH].map(full))
+    const saved = await Promise.all([WINDOW_CONFIG, C, D, ROACH, SNOW].map(full))
     const handlers: Record<string, any> = {}
     for (const [name, handler] of Object.entries({
       ...(ConnHandlers as any),
@@ -112,7 +114,7 @@ describe("secondary connections in the entity tree", () => {
 
   it("loads every saved connection of the workspace", () => {
     const ids = store.state["connectionTree"].savedConnections.map((c: any) => c.id)
-    expect(ids).toEqual([3, 7, 9, 11])
+    expect(ids).toEqual([3, 7, 9, 11, 13])
     expect(sent.mock.calls.find(([name]) => name === "appdb/saved/find")[1]).toEqual({ options: { where: { workspaceId: -1 } } })
   })
 
@@ -225,4 +227,19 @@ describe("secondary connections in the entity tree", () => {
       expect(store.state["connectionTree"].connections).toEqual({})
     })
   }
+
+  it("snowflake MFA prompt cancel leaves the connection closed", async () => {
+    fakeServer(SNOW.name)
+    const prompt = vi.spyOn(BeekeeperPlugin, "promptSnowflakeMFAPasscode").mockResolvedValue({ passcode: null, cancelled: true } as any)
+
+    expect(await store.dispatch("connectionTree/open", 13)).toBe(false)
+    expect(prompt).toHaveBeenCalledTimes(1)
+    expect(received.filter((r) => r.name === "conn/create")).toHaveLength(0)
+    expect(connectionOf(13).status).toBe("idle")
+
+    prompt.mockResolvedValue({ passcode: "123456", cancelled: false } as any)
+    expect(await store.dispatch("connectionTree/open", 13)).toBe(true)
+    const createArgs = sent.mock.calls.find(([name]) => name === "conn/create")[1]
+    expect(createArgs.config.snowflakeOptions.passcode).toBe("123456")
+  })
 })

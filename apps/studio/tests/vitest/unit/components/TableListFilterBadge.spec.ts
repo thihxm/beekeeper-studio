@@ -16,7 +16,7 @@ localVue.mixin(AppEventMixin);
 
 const table = (name: string, schema = "public") => ({ name, schema, entityType: "table", columns: [] });
 
-function mountTableList(hidden: any[]) {
+function mountTableList(hidden: any[], secondary: Record<number, any> | null = null) {
   const log = table("log", "audit");
   const store = new Vuex.Store({
     state: {
@@ -33,6 +33,7 @@ function mountTableList(hidden: any[]) {
       selectedSidebarItem: null,
       usedConfig: { readOnlyMode: false },
       entityFilter: { filterQuery: "use", showTables: true, showViews: true, showRoutines: true, showPartitions: false },
+      ...(secondary ? { connectionTree: { connections: secondary } } : {}),
     },
     getters: {
       filteredTables: root.getters.filteredTables,
@@ -61,5 +62,19 @@ describe("TableList entities badge while filtering", () => {
   it("badge sums the default and loaded databases", () => {
     expect(badge(mountTableList([]))).toBe("2 / 5");
     expect(badge(mountTableList(["log"]))).toBe("2 / 4");
+  });
+
+  it("badge counts secondary connections", () => {
+    // saved connection 7, opened from the tree: shop loaded (users, orders), audit still loading
+    const secondary = {
+      7: {
+        status: "connected",
+        databaseEntities: {
+          shop: { status: "loaded", tables: [table("users"), table("orders")], routines: [] },
+          audit: { status: "loading", tables: [], routines: [] },
+        },
+      },
+    };
+    expect(badge(mountTableList([], secondary))).toBe("3 / 7");
   });
 });
