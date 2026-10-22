@@ -202,7 +202,8 @@ export default {
     ...mapGetters({
       hasRunningExports: 'exports/hasRunningExports',
       workspace: 'workspace',
-      connectionColor: 'connectionColor',
+      // colored like the rest of the status bar: the active tab's connection
+      connectionColor: 'activeConnectionColor',
       savedConnections: 'data/connections/filteredConnections',
       privacyMode: 'settings/privacyMode'
     }),
