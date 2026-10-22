@@ -50,6 +50,22 @@
                   >
                   <span>Routines</span>
                 </label>
+                <template v-if="showConnectionScope">
+                  <hr>
+                  <label
+                    v-for="option in connectionScopeOptions"
+                    :key="option.value"
+                    class="connection-scope-option"
+                  >
+                    <input
+                      type="radio"
+                      name="connection-tree-scope"
+                      :value="option.value"
+                      v-model="connectionTreeScope"
+                    >
+                    <span>{{ option.label }}</span>
+                  </label>
+                </template>
                 <x-menuitem />
               </x-menu>
             </x-button>
@@ -235,9 +251,15 @@
       },
       /** entities of the non-default databases loaded in the tree */
       otherLoadedEntities() {
-        return Object.entries(this.databaseEntities ?? {})
-          .filter(([name, loaded]: [string, any]) => name !== this.database && loaded.status === 'loaded')
+        const loadedOf = (entities: Record<string, any>, skip: string | null) => Object.entries(entities ?? {})
+          .filter(([name, loaded]: [string, any]) => name !== skip && loaded.status === 'loaded')
           .map(([, loaded]: [string, any]) => [...loaded.tables, ...loaded.routines])
+        // saved connections the tree lists count too, every loaded database of each
+        const connections = this.$store.state.connectionTree?.connections ?? {}
+        const listed = this.$bksConfig.security?.lockMode !== 'pin' ? this.$store.getters['connectionTree/listed'] ?? [] : []
+        const secondary = listed
+          .flatMap((config: any) => loadedOf(connections[config.id]?.databaseEntities, null))
+        return [...loadedOf(this.databaseEntities, this.database), ...secondary]
       },
       totalEntities() {
         const others = _.sumBy(this.otherLoadedEntities, 'length')
@@ -284,6 +306,25 @@
         set() {
           this.$store.commit('showRoutines')
         }
+      },
+      /** which saved connections the tree lists next to the window's */
+      connectionTreeScope: {
+        get() {
+          return this.$store.getters['connectionTree/scope']
+        },
+        set(value) {
+          this.$store.dispatch('settings/save', { key: 'connectionTreeScope', value })
+        }
+      },
+      showConnectionScope() {
+        return this.$bksConfig.security?.lockMode !== 'pin'
+      },
+      connectionScopeOptions() {
+        return [
+          { value: 'off', label: 'No other connections' },
+          { value: 'pinned', label: 'Pinned connections' },
+          { value: 'all', label: 'All saved connections' },
+        ]
       },
       components() {
         return [

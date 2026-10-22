@@ -83,4 +83,27 @@ describe("QueryDatabaseSelector", () => {
     const idle = mountSelector({ tabType: "query", databaseName: "a" });
     expect(idle.find("select").attributes("disabled")).toBeUndefined();
   });
+
+  it("lists and changes databases of the tab connection", async () => {
+    // the window is on `a`; saved connection 7, opened from the tree, has `audit` and `shop`
+    const contexts = {
+      7: { database: "shop", databaseList: ["audit", "shop"] },
+      null: { database: "a", databaseList: ["a", "b", "c"] },
+    };
+    const windowStore = new Vuex.Store({
+      state: { database: "a", databaseList: ["a", "b", "c"] },
+      getters: { connectionContext: () => (id: number | null) => contexts[id ?? "null"] },
+    });
+    const tab = { id: 9, tabType: "query", targetConnectionId: 7, databaseName: "shop" };
+    const wrapper = mount(QueryDatabaseSelector, { localVue, store: windowStore, propsData: { tab } });
+
+    expect(wrapper.findAll("option").wrappers.map((o) => o.text())).toEqual(["audit", "shop"]);
+    const select = wrapper.find("select");
+    (select.element as HTMLSelectElement).value = "audit";
+    await select.trigger("change");
+
+    expect(tab.databaseName).toBe("audit");
+    expect(tab.targetConnectionId).toBe(7);
+    expect(windowStore.state.database).toBe("a");
+  });
 });

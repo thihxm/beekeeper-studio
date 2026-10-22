@@ -142,6 +142,7 @@ import ISavedQuery from "@/common/interfaces/ISavedQuery";
 import type { Extension } from "@codemirror/state";
 import { monokaiInit } from "@uiw/codemirror-theme-monokai";
 import rawLog from "@bksLogger";
+import { TabDatabaseMixin } from "@/mixins/TabDatabase";
 import Split from "split.js";
 
 const log = rawLog.scope("QueryEditHistory");
@@ -159,6 +160,7 @@ interface Audit {
 }
 
 export default Vue.extend({
+  mixins: [TabDatabaseMixin],
   components: { MergeTextEditor },
   props: {
     open: {
@@ -213,8 +215,9 @@ export default Vue.extend({
     },
   },
   computed: {
-    ...mapState(["connectionType", "tables"]),
-    ...mapGetters(["dialectData", "isCloud"]),
+    // connectionType and dialectData follow the tab's connection (TabDatabaseMixin)
+    ...mapState(["tables"]),
+    ...mapGetters(["isCloud"]),
     ...mapState("data/queries", {
       queries: "items"
     }),

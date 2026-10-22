@@ -313,6 +313,7 @@ import { ColumnComponent, CellComponent, RangeComponent, RowComponent } from 'ta
 import data_converter from "../../mixins/data_converter";
 import DataMutators from '../../mixins/data_mutators'
 import { FkLinkMixin } from '@/mixins/fk_click'
+import { TabConnectionMixin } from '@/mixins/TabDatabase'
 import Statusbar from '../common/StatusBar.vue'
 import RowFilterBuilder from './RowFilterBuilder.vue'
 import ColumnFilterModal from './ColumnFilterModal.vue'
@@ -350,10 +351,13 @@ const nullComponent = {
 
 export default Vue.extend({
   components: { Statusbar, ColumnFilterModal, TableLength, RowFilterBuilder, EditorModal, LoadingSpinner },
-  mixins: [data_converter, DataMutators, FkLinkMixin],
+  mixins: [data_converter, DataMutators, FkLinkMixin, TabConnectionMixin],
   props: ["active", 'tab', 'table'],
   provide() {
-    return { tabDatabase: () => this.tab?.databaseName ?? null }
+    return {
+      tabDatabase: () => this.tab?.databaseName ?? null,
+      tabConnectionId: () => this.tab?.targetConnectionId ?? null,
+    }
   },
   data() {
     return {
@@ -413,14 +417,15 @@ export default Vue.extend({
   computed: {
     /** The tab's database, or the connection's default one */
     database(): string | null {
-      return this.tab?.databaseName ?? this.$store.state.database
+      return this.tab?.databaseName ?? this.connectionContext.database
     },
-    /** Every call of this tab goes to its own database */
+    /** Every call of this tab goes to its own database, on its own connection */
     connection() {
-      return this.$store.getters.connectionFor(this.tab?.databaseName)
+      return this.$store.getters.connectionFor(this.tab?.databaseName, this.tab?.targetConnectionId)
     },
-    ...mapState(['tables', 'tablesInitialLoaded', 'usedConfig', 'workspaceId', 'connectionType']),
-    ...mapGetters(['dialectData', 'dialect', 'minimalMode']),
+    // usedConfig, connectionType, dialect and dialectData follow the tab's connection (TabConnectionMixin)
+    ...mapState(['tables', 'tablesInitialLoaded', 'workspaceId']),
+    ...mapGetters(['minimalMode']),
     ...mapGetters('popupMenu', ['getExtraPopupMenu']),
     canJumpToLastPage() {
       const dbType = this.connectionType === 'postgresql' ? 'postgres' : this.connectionType;
@@ -877,6 +882,7 @@ export default Vue.extend({
             { separator: true },
             this.quickFilterMenuItem(cell),
               ...copyActionsMenu({
+                connection: this.connection,
                 tabulator: cell.getTable(),
                 table: this.table.name,
                 schema: this.table.schema,
@@ -919,6 +925,7 @@ export default Vue.extend({
           this.setAsNullMenuItem(ranges),
           { separator: true },
           ...copyActionsMenu({
+            connection: this.connection,
             tabulator: column.getTable(),
             table: this.table.name,
             schema: this.table.schema,
@@ -1165,7 +1172,7 @@ export default Vue.extend({
     async initialize() {
       this.initialized = true
       this.resetPendingChanges()
-      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
+      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table, targetConnectionId: this.tab?.targetConnectionId ?? null })
       await this.getTableKeys();
       await this.loadPersistence();
 
@@ -1185,6 +1192,7 @@ export default Vue.extend({
               this.setAsNullMenuItem(ranges),
               { separator: true },
               ...copyActionsMenu({
+                connection: this.connection,
                 tabulator: cell.getTable(),
                 table: this.table.name,
                 schema: this.table.schema,
@@ -1200,6 +1208,7 @@ export default Vue.extend({
               this.setAsNullMenuItem(ranges),
               { separator: true },
               ...copyActionsMenu({
+                connection: this.connection,
                 tabulator: this.tabulator,
                 table: this.table.name,
                 schema: this.table.schema,
@@ -2053,7 +2062,7 @@ export default Vue.extend({
 
             if (_.xor(response.fields, this.table.columns.map(c => c.columnName)).length > 0) {
               log.debug('table has changed, updating')
-              await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
+              await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table, targetConnectionId: this.tab?.targetConnectionId ?? null })
             }
 
             const r = response.result;
@@ -2165,7 +2174,7 @@ export default Vue.extend({
       await this.getTableKeys()
       // Re-fetch column metadata on explicit refresh so renames show up without
       // reopening the connection (issue #4567). No-ops when columns are unchanged.
-      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
+      await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table, targetConnectionId: this.tab?.targetConnectionId ?? null })
 
       await this.tabulator.replaceData()
       const layout = this.tabulator.getColumnLayout();

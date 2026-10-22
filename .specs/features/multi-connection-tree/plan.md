@@ -38,25 +38,25 @@ flowchart TD
     LIST["VirtualTableList (exists) - connection level"] -->|expand| CT["store connectionTree module (new, no door - placement)"]
     CT --> RES["resolveEphemeralValues (exists) - JWT / MFA prompts"]
     RES --> CLI["ElectronUtilityConnectionClient (exists) - bound to a child session (door 1)"]
-    CLI -->|"conn/create, conn/listDatabases, conn/listTables... with sId = child"| UT["utility runHandler (exists) - creates the child State on first use (door 1)"]
+    CLI -->|"conn/create, conn/listDatabases, conn/listTables... with sId = child"| UT["utility port listener (exists) + handlerState sessionForRequest - creates the child State on first use (door 1)"]
     UT --> HS["handlerState connectionFor (exists) - per child State"]
     HS --> CT
     CT --> LIST
     LIST -->|View Data / Structure / New query| TABS["CoreTabs + TabModule (exist) - OpenTab.targetConnectionId (door 2)"]
-    TABS --> TD["TabDatabaseMixin (exists) - connection, database, dialect, features, config of the tab"]
+    TABS --> TD["TabDatabaseMixin (exists) / TabConnectionMixin (new, placement) - connection, database, dialect, features, config of the tab, from the root getter connectionContext"]
     TD --> COMP["TableTable, TabTableProperties, TabQueryEditor (exist) and their children"]
-    TABS --> SB["StatusBar (exists) - color of the active tab's connection"]
+    TABS --> SB["StatusBar (exists) - root getter activeConnectionColor"]
     TABS --> HDR["CoreTabHeader (exists) - connection name and color"]
     DISC["store disconnect / rollbackConnection (exist)"] --> CLOSE["utility: end every child session of the window"]
 ```
 
 1. `VirtualTableList` builds the connection level from the window's connection plus the saved connections allowed by `connectionTreeScope` (door 3): none (`off`), pinned only (`pinnedConnections`), or every saved connection of the current workspace. The window's own saved connection is never listed twice
 2. Expanding a secondary connection → `connectionTree` store module (new, placement): runs `resolveEphemeralValues` (exists), then `conn/create` through an `ElectronUtilityConnectionClient` whose `send` sets `sId` to the child key (door 1). `UtilityConnection.send` already lets an explicit `sId` win over its own (`{ sId: this._sId, ...args }`)
-3. The utility's `runHandler` (exists) sees an unknown child key whose parent session exists, creates a `State` for it that shares the parent's port, and runs the handler. `conn/create`, `connectionFor`, eviction and the sweep then work per child exactly as they do for the window
+3. The utility's port listener (exists) calls `sessionForRequest` (handlerState) before `runHandler`: an unknown child key whose parent session exists gets a `State` that shares the parent's port; an orphan key is answered with an error. `conn/create`, `connectionFor`, eviction and the sweep then work per child exactly as they do for the window
 4. The module loads the child's `databaseList`, `inaccessibleDatabases`, `supportedFeatures`, `defaultSchema` and the default database's entities; other databases of that connection load on expand, as today. `VirtualTableList` renders them with the existing database, schema and entity items
 5. Opening an entity or a query from a secondary node → `CoreTabs` (exists) → `tabs/add` (`TabModule`, exists) persists `OpenTab.targetConnectionId` (door 2) next to `databaseName`. The tab still belongs to the window's connection (`connectionId`), so it is restored with the window's tabs
-6. `connectionForTab` (exists) and `TabDatabaseMixin` (exists) resolve the tab's client from `targetConnectionId` + `databaseName`, and also give the tab its connection's dialect, `dialectData`, `supportedFeatures` and saved config (read-only mode). A restored tab whose connection is not open yet connects it on first use (step 2)
-7. `StatusBar` (exists) and `CoreTabHeader` (exists) read the active tab's connection color and name
+6. The root getters `connectionFor`, `tablesFor` and the new `connectionContext` take the tab's `targetConnectionId`; `TabDatabaseMixin` (children, through the injected `tabConnectionId`) and `TabConnectionMixin` (the query, table and structure tabs, from `this.tab`) give every tab component its connection's client, dialect, `dialectData`, `supportedFeatures` and saved config (read-only mode). A restored tab whose connection is not open yet connects it on first use: the client's session `open` hook, and `TabWithTable` / `TabQueryEditor` on mount (step 2)
+7. `StatusBar` (exists) reads the root getter `activeConnectionColor`, and `CoreTabHeader` (exists) the tab's `connectionContext` name and color; `sidebarKeyForTab` prefixes a secondary tab's key with `connection::<id>::<database>::`, like the tree's keys
 8. Disconnect: the node's `Disconnect` sends `conn/disconnect` + `conn/clearConnection` to the child and drops it from the module. The window's `disconnect` / `rollbackConnection` (exist) do the same for every child before their own, and the utility's `close` of a window removes its child states
 
 ## Impact
@@ -68,6 +68,7 @@ flowchart TD
 | domain | `TabDatabaseMixin` stops meaning "database of the tab" only: it becomes the tab's whole connection context (client, database, dialect, features, config). Components that read the root getters `dialect`, `dialectData`, `supportedFeatures` or `usedConfig` while rendered inside a table, structure or query tab must read them from the mixin, or they show the window's dialect for a tab on another server. The build sweeps those components; 14 already use the mixin, about 40 read the root getters. |
 | behaviour | The tree gains a top level whenever at least one secondary connection is listed. With no listed connection (scope `pinned` and nothing pinned) the tree is exactly today's. |
 | behaviour | `StatusBar`'s color follows the active tab's target connection instead of always the window's. `ConnectionButton` (name, disconnect menu) keeps showing the window's connection. |
+| behaviour | Four calls bypass the tab's client today and always reach the window's session: `query/execute` and `query/cancel` (sent by `ElectronUtilityConnectionClient.query` itself), `conn/resetTransactionTimeout` (`TabQueryEditor.vue:1991`) and the copy-as-IN-list / copy-as-SQL sends in `lib/menu/tableMenu.ts:176,192`. They follow the tab's client, or a query on a secondary connection could never run, cancel, keep its transaction or copy. |
 | behaviour | Opening a secondary connection records a use in `UsedConnection` (recent connections), because it goes through `conn/create`. |
 | behaviour | The pinned connections list (`pinnedConnections/orderedPins`) only resolves pins whose connection is loaded in `data/connections`, which loads per expanded folder. The tree needs every pinned or saved connection of the workspace regardless of folder state, so it reads its own full list. |
 | resources | Each open secondary connection holds its own pool, its own SSH tunnel if configured, and up to `maxOpenDatabases` extra database clients, until it is disconnected or the window disconnects. |
@@ -165,6 +166,7 @@ A tab opened from a secondary node runs on that connection, with its dialect, un
 28. WHILE a query tab is bound to secondary connection `C`, its database selector SHALL list `C`'s databases and changing it SHALL update the tab's `databaseName` only
 29. The tab header of a tab bound to secondary connection `C` SHALL show `C`'s name next to the database name, with `C`'s `labelColor` mark
 30. The system SHALL run tabs with `targetConnectionId = NULL` exactly as before this feature
+36. WHEN a tab bound to secondary connection `C` becomes active THEN the sidebar selection key SHALL start with `` `connection::${C.id}::` `` and SHALL NOT equal the key of any item of the window's connection, so the tree never highlights a same-named entity of another server (added 2026-10-22 while deriving checks: the existing key carries only the database)
 31. The tree SHALL limit entity actions on secondary connections to View Data, View Structure, New query and Copy Name; export, import, backup, create, drop, truncate, duplicate, pin, hide and database color SHALL NOT be offered on secondary nodes
 
 **Independent test:** with a Postgres window and an expanded MySQL secondary connection, open a

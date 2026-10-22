@@ -125,6 +125,12 @@ export function createMenuItem(
   return `<x-menuitem>${leadingIcon}${label}${shortcut}</x-menuitem>`;
 }
 
+/** The calls copying needs from a tab's client */
+export interface CopyConnection {
+  listTableColumns(table: string, schema?: string): Promise<any[]>;
+  getInsertQuery(tableInsert: any): Promise<string>;
+}
+
 export async function buildCopyText(
   rangeData: RangeData,
   options: {
@@ -132,6 +138,8 @@ export async function buildCopyText(
     table?: string;
     schema?: string;
     escapeString?: (s: string, quote?: boolean) => string;
+    /** the client of the tab the data comes from; the window's default connection when absent */
+    connection?: CopyConnection;
   }
 ): Promise<string> {
   let text = "";
@@ -173,10 +181,12 @@ export async function buildCopyText(
     }
     case "asIn": {
       const [colDataType] = Object.keys(rangeData[0])
-      const columns = await Vue.prototype.$util.send("conn/listTableColumns", {
-        table: options.table,
-        schema: options.schema
-      });
+      const columns = options.connection ?
+        await options.connection.listTableColumns(options.table, options.schema) :
+        await Vue.prototype.$util.send("conn/listTableColumns", {
+          table: options.table,
+          schema: options.schema
+        });
       const dataType = columns.find(c => c.columnName === colDataType)?.dataType
       const isNumericType = dataType ? isNumericDataType(dataType) : false
 
@@ -189,13 +199,12 @@ export async function buildCopyText(
       break
     }
     case "sql":
-      text = await Vue.prototype.$util.send("conn/getInsertQuery", {
-        tableInsert: {
-          table: options.table,
-          schema: options.schema,
-          data: rangeData,
-        },
-      });
+      {
+        const tableInsert = { table: options.table, schema: options.schema, data: rangeData };
+        text = options.connection ?
+          await options.connection.getInsertQuery(tableInsert as any) :
+          await Vue.prototype.$util.send("conn/getInsertQuery", { tableInsert });
+      }
       break;
     case "columnName":
       text = Object.keys(rangeData[0]).join(" ");
@@ -394,8 +403,9 @@ export function copyActionsMenu(options: {
   table?: string;
   schema?: string;
   escapeString?: (s: string, quote?: boolean) => string;
+  connection?: CopyConnection;
 }) {
-  const { tabulator, table, schema, escapeString } = options;
+  const { tabulator, table, schema, escapeString, connection } = options;
   const columnCount = tabulator.getRanges()[0].getColumns().length
   const copyActions = [
     {
@@ -425,6 +435,7 @@ export function copyActionsMenu(options: {
           type: "sql",
           table,
           schema,
+          connection,
         }),
     },
   ];
@@ -432,7 +443,7 @@ export function copyActionsMenu(options: {
   if (columnCount === 1) {
     copyActions.push({
       label: createMenuItem("Copy for IN statement"),
-      action: () => tabulator.copyRanges({ type: "asIn", table, schema, escapeString }),
+      action: () => tabulator.copyRanges({ type: "asIn", table, schema, escapeString, connection }),
     })
   }
 

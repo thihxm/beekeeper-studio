@@ -13,4 +13,14 @@ describe("TransportOpenTab", () => {
     expect(matches(tableTab(null), tableTab("a"), "a")).toBe(true)
     expect(matches(tableTab(null), tableTab("b"), "a")).toBe(false)
   })
+
+  it("target connection distinguishes tabs", () => {
+    const tab = (tabType: string, targetConnectionId: number | null) =>
+      ({ tabType, tableName: "users", schemaName: "public", entityType: "table", databaseName: "shop", queryId: 5, targetConnectionId }) as TransportOpenTab
+    for (const type of ["table", "query"]) {
+      expect(matches(tab(type, null), tab(type, 7), "a")).toBe(false)
+      expect(matches(tab(type, 7), tab(type, null), "a")).toBe(false)
+      expect(matches(tab(type, 7), tab(type, 7), "a")).toBe(true)
+    }
+  })
 })

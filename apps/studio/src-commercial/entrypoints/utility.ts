@@ -11,7 +11,7 @@ import { ConnHandlers } from '../backend/handlers/connHandlers';
 import { FileHandlers } from '@/handlers/fileHandlers';
 import { GeneratorHandlers } from '@/handlers/generatorHandlers';
 import { Handlers } from '../backend/handlers/handlers';
-import { newState, removeState, state } from '@/handlers/handlerState';
+import { newState, removeState, sessionForRequest, state } from '@/handlers/handlerState';
 import { QueryHandlers } from '@/handlers/queryHandlers';
 import { TabHistoryHandlers } from '@/handlers/tabHistoryHandlers'
 import { ExportHandlers } from '@commercial/backend/handlers/exportHandlers';
@@ -37,7 +37,7 @@ import {
   ConfigurationModule,
   BundledPluginModule,
 } from '@commercial/backend/plugin-system/modules';
-import { PluginErrorCode, PluginSystemErrorCode } from '@/lib/errors';
+import { PluginErrorCode, PluginSystemErrorCode, errorMessage } from '@/lib/errors';
 
 import * as sms from 'source-map-support'
 import { WorkspaceHandlers } from '@/handlers/workspaceHandlers';
@@ -160,7 +160,7 @@ async function runHandler(id: string, name: string, args: any) {
       .catch((e) => {
         replyArgs.type = 'error';
         replyArgs.stack = e?.stack;
-        replyArgs.error = e?.message ?? e;
+        replyArgs.error = errorMessage(e);
         replyArgs.errorName = e?.name;
         replyArgs.errorCode = e?.code;
         replyArgs.errorDetail = e?.detail
@@ -198,6 +198,13 @@ async function initState(sId: string, port: MessagePortMain) {
 
   state(sId).port.on('message', ({ data }) => {
     const { id, name, args } = data;
+    try {
+      // a request for another saved connection runs in that connection's own session
+      if (args?.sId) sessionForRequest(args.sId);
+    } catch (e) {
+      port.postMessage({ id, type: 'error', error: e?.message ?? e });
+      return;
+    }
     runHandler(id, name, args);
   })
 

@@ -98,7 +98,6 @@ import { Tabulator, TabulatorFull, CellComponent, RowComponent, ColumnDefinition
 import StatusBar from '../common/StatusBar.vue'
 import { TabulatorStateWatchers, trashButton, vueEditor } from '@shared/lib/tabulator/helpers'
 import NullableInputEditorVue from '@shared/components/tabulator/NullableInputEditor.vue'
-import { mapGetters, mapState } from 'vuex'
 import { TabDatabaseMixin } from '@/mixins/TabDatabase'
 import { CreateRelationSpec, Dialect, DialectTitles, FormatterDialect, RelationAlterations, TableKey } from '@shared/lib/dialects/models'
 import { TableColumn, TableOrView } from '@/lib/db/models'
@@ -133,12 +132,10 @@ export default Vue.extend({
     }
   },
   computed: {
-    ...mapState(['usedConfig']),
-    /** entities of the tab's database */
+    /** entities of the tab's database, on the tab's connection */
     tables() {
-      return this.$store.getters.tablesFor(this.tabDatabase())
+      return this.$store.getters.tablesFor(this.tabDatabase(), this.tabConnectionId())
     },
-    ...mapGetters(['dialect', 'dialectData']),
     /** schemas of the tab's database */
     schemas() {
       return _.uniq(this.tables.map((t) => t.schema).filter((s) => !!s))
@@ -320,7 +317,7 @@ export default Vue.extend({
       let tableData = this.findTable(schema, table)
 
       if (tableData?.columns == null) {
-        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tabDatabase(), table: tableData })
+        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tabDatabase(), table: tableData, targetConnectionId: this.tabConnectionId() })
         tableData = this.findTable(schema, table)
       }
 

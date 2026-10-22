@@ -1,6 +1,27 @@
 <template>
+  <stateless-connection-item
+    v-if="source.type === 'connection'"
+    :style="{ '--level': source.level }"
+    :name="source.entity"
+    :expanded="isOpen(source)"
+    :is-window="source.isWindow"
+    :color="source.color"
+    :status="source.status"
+    :error="source.error"
+    @expand="onExpand($event, source)"
+    @retry="onRetry($event, source)"
+    @contextmenu.prevent.stop="
+      $bks.openMenu({
+        id: 'entity.connection',
+        event: $event,
+        item: source,
+        options: source.contextMenu,
+      })
+    "
+  />
   <stateless-database-item
-    v-if="source.type === 'database'"
+    v-else-if="source.type === 'database'"
+    :style="{ '--level': source.level }"
     :name="source.entity"
     :expanded="isOpen(source)"
     :is-default="source.isDefault"
@@ -43,6 +64,7 @@
     :expanded="source.expanded"
     :table="source.entity"
     :database="source.database"
+    :connection-id="source.connectionId"
     :pinned="source.pinned"
     :loading-columns="source.loadingColumns"
     @expand="onExpand($event, source)"
@@ -61,6 +83,7 @@
     :level="source.level"
     :expanded="source.expanded"
     :routine="source.entity"
+    :connection-id="source.connectionId"
     :pinned="source.pinned"
     @expand="onExpand($event, source)"
     @pin="onPin($event, source)"
@@ -81,8 +104,10 @@ import StatelessTableListItem from "./StatelessTableListItem.vue";
 import StatelessRoutineListItem from "./StatelessRoutineListItem.vue";
 import StatelessSidebarFolder from "@/components/common/StatelessSidebarFolder.vue";
 import StatelessDatabaseItem from "./StatelessDatabaseItem.vue";
+import StatelessConnectionItem from "./StatelessConnectionItem.vue";
 export default Vue.extend({
   components: {
+    StatelessConnectionItem,
     StatelessDatabaseItem,
     StatelessTableListItem,
     StatelessRoutineListItem,

@@ -16,7 +16,7 @@ localVue.mixin(AppEventMixin);
 
 const table = (name: string, schema = "public") => ({ name, schema, entityType: "table", columns: [] });
 
-function mountTableList(hidden: any[]) {
+function mountTableList(hidden: any[], secondary: Record<number, any> | null = null, listed: number[] = [], lockMode: string | null = null) {
   const log = table("log", "audit");
   const store = new Vuex.Store({
     state: {
@@ -33,6 +33,7 @@ function mountTableList(hidden: any[]) {
       selectedSidebarItem: null,
       usedConfig: { readOnlyMode: false },
       entityFilter: { filterQuery: "use", showTables: true, showViews: true, showRoutines: true, showPartitions: false },
+      ...(secondary ? { connectionTree: { connections: secondary } } : {}),
     },
     getters: {
       filteredTables: root.getters.filteredTables,
@@ -44,6 +45,7 @@ function mountTableList(hidden: any[]) {
       "hideEntities/totalEntities": () => hidden.length,
       "hideEntities/databaseEntities": () => hidden.map((name) => (name === "log" ? log : name)),
       "hideEntities/databaseSchemas": () => [],
+      "connectionTree/listed": () => listed.map((id) => ({ id })),
     },
   });
   (window as any).platformInfo = { ...(window as any).platformInfo, isDevelopment: false };
@@ -51,7 +53,7 @@ function mountTableList(hidden: any[]) {
     localVue,
     store,
     stubs: { portal: { template: "<div><slot /></div>" } },
-    mocks: { $bksConfig: { ui: { tableList: { itemHeight: 20 } } } },
+    mocks: { $bksConfig: { ui: { tableList: { itemHeight: 20 } }, security: { lockMode } } },
   });
 }
 
@@ -61,5 +63,34 @@ describe("TableList entities badge while filtering", () => {
   it("badge sums the default and loaded databases", () => {
     expect(badge(mountTableList([]))).toBe("2 / 5");
     expect(badge(mountTableList(["log"]))).toBe("2 / 4");
+  });
+
+  it("badge counts secondary connections", () => {
+    // saved connection 7, opened from the tree: its default database shop loaded (users, orders), audit still loading
+    const secondary = {
+      7: {
+        status: "connected",
+        database: "shop",
+        databaseEntities: {
+          shop: { status: "loaded", tables: [table("users"), table("orders")], routines: [] },
+          audit: { status: "loading", tables: [], routines: [] },
+        },
+      },
+    };
+    expect(badge(mountTableList([], secondary, [7]))).toBe("3 / 7");
+  });
+
+  it("badge leaves out secondary connections the tree does not list", () => {
+    const secondary = {
+      7: {
+        status: "connected",
+        database: "shop",
+        databaseEntities: { shop: { status: "loaded", tables: [table("users"), table("orders")], routines: [] } },
+      },
+    };
+    // scope off, or 7 unpinned in pinned scope: 7 stays connected but is not listed
+    expect(badge(mountTableList([], secondary, []))).toBe("2 / 5");
+    // PIN lock mode hides the connection level
+    expect(badge(mountTableList([], secondary, [7], "pin"))).toBe("2 / 5");
   });
 });

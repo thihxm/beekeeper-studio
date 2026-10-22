@@ -179,6 +179,12 @@
         background: color-mix(in srgb, var(--connection-label-color) 25%, transparent);
         color: $text-dark;
       }
+      .tab-connection {
+        margin-left: 0.35rem;
+        color: $text-light;
+        font-size: 85%;
+        font-weight: normal!important;
+      }
       .tab-database {
         margin-left: 0.35rem;
         padding: 0 0.3rem;

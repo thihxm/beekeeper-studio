@@ -580,6 +580,7 @@
 
   import QueryEditorStatusBar from './editor/QueryEditorStatusBar.vue'
   import QueryDatabaseSelector from './editor/QueryDatabaseSelector.vue'
+  import { TabConnectionMixin } from '@/mixins/TabDatabase'
   import QueryEditHistory from '@/components/editor/QueryEditHistory.vue'
   import rawlog from '@bksLogger'
   import ErrorAlert from './common/ErrorAlert.vue'
@@ -608,12 +609,16 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
   export default {
     // this.queryText holds the current editor value, always
     components: { QueryDatabaseSelector, ResultTable, ProgressBar, ShortcutHints, QueryEditorStatusBar, ErrorAlert, MergeManager, SqlTextEditor, SurrealTextEditor, BksSuperFormatter, QueryEditHistory, InAppFolderPicker },
+    mixins: [TabConnectionMixin],
     props: {
       tab: Object as PropType<TransportOpenTab>,
       active: Boolean
     },
     provide() {
-      return { tabDatabase: () => this.tab?.databaseName ?? null }
+      return {
+        tabDatabase: () => this.tab?.databaseName ?? null,
+        tabConnectionId: () => this.tab?.targetConnectionId ?? null,
+      }
     },
     data() {
       return {
@@ -695,26 +700,36 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       }
     },
     computed: {
-      ...mapGetters(['dialect', 'dialectData', 'defaultSchema', 'isCloud', 'aiShellAvailable']),
+      // dialect, dialectData, defaultSchema, usedConfig and connectionType follow the tab's connection (TabConnectionMixin)
+      ...mapGetters(['isCloud', 'aiShellAvailable']),
       ...mapGetters({
         'userKeymap': 'settings/userKeymap',
       }),
       /** The tab's database, or the connection's default one */
       database(): string | null {
-        return this.tab?.databaseName ?? this.$store.state.database
+        return this.tab?.databaseName ?? this.connectionContext.database
       },
-      /** Every call of this tab goes to its own database */
+      /** Every call of this tab goes to its own database, on its own connection */
       connection() {
-        return this.$store.getters.connectionFor(this.tab?.databaseName)
+        return this.$store.getters.connectionFor(this.tab?.databaseName, this.tab?.targetConnectionId)
       },
       showDatabaseSelector(): boolean {
-        return !this.dialectData?.disabledFeatures?.multipleDatabases && this.$store.state.databaseList.length > 0
+        return !this.dialectData?.disabledFeatures?.multipleDatabases && this.databaseList.length > 0
       },
       /** Entities of the tab's database, for autocomplete */
       tables() {
-        return this.$store.getters.tablesFor(this.tab?.databaseName)
+        return this.$store.getters.tablesFor(this.tab?.databaseName, this.tab?.targetConnectionId)
       },
-      ...mapState(['usedConfig', 'connectionType', 'storeInitialized']),
+      /** an open transaction or reserved connection keeps a saved connection from disconnecting */
+      busyOnConnection() {
+        return { connectionId: this.tab?.targetConnectionId ?? null, busy: this.hasActiveTransaction || this.isManualCommit }
+      },
+      activeTarget() {
+        const id = this.tab?.targetConnectionId
+        if (!this.active || id == null) return null
+        return { id, database: this.tab.databaseName ?? null }
+      },
+      ...mapState(['storeInitialized']),
       ...mapState('data/queries', {'savedQueries': 'items'}),
       ...mapState('data/queryFolders', { queryFolders: 'items' }),
       ...mapState('settings', ['settings']),
@@ -1157,9 +1172,26 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       'tab.databaseName': {
         immediate: true,
         handler(database: string | null) {
+          if (this.tab?.targetConnectionId != null) return
           if (database != null && database !== this.$store.state.database) {
             this.$store.dispatch('loadDatabaseEntities', { database })
           }
+        }
+      },
+      // a tab on a saved connection connects it once active, then loads its database
+      activeTarget: {
+        immediate: true,
+        async handler(target: { id: number, database: string | null } | null) {
+          if (!target) return
+          if (await this.$store.dispatch('connectionTree/open', target.id)) {
+            this.$store.dispatch('connectionTree/loadDatabase', target)
+          }
+        }
+      },
+      busyOnConnection: {
+        immediate: true,
+        handler({ connectionId, busy }) {
+          this.$store.commit('connectionTree/tabBusy', { tabId: this.tab?.id, connectionId, busy })
         }
       },
     },
@@ -1844,7 +1876,9 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
             return i.type === 'CREATE_TABLE' || i.type === 'DROP_TABLE' || i.type === 'ALTER_TABLE'
           })
           if (found) {
-            this.$store.dispatch('updateTables')
+            const id = this.tab?.targetConnectionId
+            if (id != null) this.$store.dispatch('connectionTree/loadDatabase', { id, database: this.tab.databaseName, force: true })
+            else this.$store.dispatch('updateTables')
           }
           wait(1200).then(() => this.$tour.start("ranQuerySuccessfully"));
         } catch (ex) {
@@ -1988,7 +2022,7 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       async keepAliveTransaction() {
         this.showKeepAlive = false;
         this.maybeCloseWarningNoty();
-        await this.$util.send('conn/resetTransactionTimeout', { tabId: this.tab.id });
+        await this.connection.resetTransactionTimeout(this.tab.id);
       },
       async columnsGetter(tableName: string) {
         let table = this.tables.find(
@@ -2001,7 +2035,7 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
 
         // Only refresh columns if we don't have them cached.
         if (!table.columns?.length) {
-          await this.$store.dispatch("updateTableColumns", table);
+          await this.$store.dispatch("updateDatabaseTableColumns", { database: this.tab?.databaseName, table, targetConnectionId: this.tab?.targetConnectionId });
           table = this.tables.find(
             (t: TableOrView) => t.name === tableName || `${t.schema}.${t.name}` === tableName
           );
@@ -2265,6 +2299,7 @@ import { KeybindingPath } from '@/common/bksConfig/BksConfigProvider'
       this.addTransactionTimeoutListener();
     },
     beforeDestroy() {
+      this.$store.commit('connectionTree/tabBusy', { tabId: this.tab?.id, connectionId: null, busy: false })
       this.unregisterHandlers(this.rootBindings)
       if(this.split) {
         this.split.destroy()

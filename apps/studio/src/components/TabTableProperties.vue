@@ -166,12 +166,17 @@ import { format as humanBytes } from 'bytes'
 import { AppEvent } from '@/common/AppEvent'
 import { mapState, mapGetters } from 'vuex'
 import rawLog from '@bksLogger'
+import { TabConnectionMixin } from '@/mixins/TabDatabase'
 
 const log = rawLog.scope('TabTableProperties')
 export default {
   props: ["tabId", "active", "tab", "table"],
+  mixins: [TabConnectionMixin],
   provide() {
-    return { tabDatabase: () => this.tab?.databaseName ?? null }
+    return {
+      tabDatabase: () => this.tab?.databaseName ?? null,
+      tabConnectionId: () => this.tab?.targetConnectionId ?? null,
+    }
   },
   components: { Statusbar, TableLength },
   data() {
@@ -260,14 +265,15 @@ export default {
   computed: {
     /** The tab's database, or the connection's default one */
     database() {
-      return this.tab?.databaseName ?? this.$store.state.database
+      return this.tab?.databaseName ?? this.connectionContext.database
     },
-    /** Every call of this tab goes to its own database */
+    /** Every call of this tab goes to its own database, on its own connection */
     connection() {
-      return this.$store.getters.connectionFor(this.tab?.databaseName)
+      return this.$store.getters.connectionFor(this.tab?.databaseName, this.tab?.targetConnectionId)
     },
-    ...mapState(['tables', 'tablesInitialLoaded', 'supportedFeatures']),
-    ...mapGetters(['dialectData', 'dialect', 'erDiagramAvailable']),
+    // supportedFeatures, dialect and dialectData follow the tab's connection (TabConnectionMixin)
+    ...mapState(['tables', 'tablesInitialLoaded']),
+    ...mapGetters(['erDiagramAvailable']),
     ...mapGetters('popupMenu', ['getExtraPopupMenu']),
     shouldInitialize() {
       // TODO (matthew): Move this to the wrapper TabWithTable
@@ -373,7 +379,7 @@ export default {
       this.error = null
       // this.properties = null
       try {
-        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table })
+        await this.$store.dispatch('updateDatabaseTableColumns', { database: this.tab?.databaseName, table: this.table, targetConnectionId: this.tab?.targetConnectionId ?? null })
         console.log("getting primary keys")
         this.primaryKeys = await this.connection.getPrimaryKeys(this.table.name, this.table.schema);
         if (this.table.entityType === 'table') {

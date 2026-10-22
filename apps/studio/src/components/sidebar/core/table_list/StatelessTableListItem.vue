@@ -43,6 +43,7 @@
         }}</span>
       </span>
       <span
+        v-if="connectionId == null"
         class="actions"
         :class="{ pinned: pinned }"
       >
@@ -134,6 +135,8 @@ export default Vue.extend({
     "table",
     /** set when the table belongs to a non-default database */
     "database",
+    /** set when the table belongs to a saved connection opened from the tree */
+    "connectionId",
     "container",
     "pinned",
     "draggable",
@@ -178,6 +181,7 @@ export default Vue.extend({
         this.activeTab.table &&
         this.activeTab.table.name === this.table.name &&
         this.activeTab.table.schema === this.table.schema &&
+        (this.activeTab.targetConnectionId ?? null) === (this.connectionId ?? null) &&
         (this.activeTab.databaseName ?? this.defaultDatabase) === (this.database ?? this.defaultDatabase);
 
       return tableSelected;
@@ -212,7 +216,7 @@ export default Vue.extend({
       if (this.clickState.openClicks > 0) {
         return;
       }
-      this.$root.$emit("loadTable", { table: this.table, database: this.database });
+      this.$root.$emit("loadTable", { table: this.table, database: this.database, connectionId: this.connectionId ?? null });
       this.clickState.openClicks++;
       this.clickState.timer = setTimeout(() => {
         this.clickState.openClicks = 0;
