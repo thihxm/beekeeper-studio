@@ -65,10 +65,11 @@ describe("TableList entities badge while filtering", () => {
   });
 
   it("badge counts secondary connections", () => {
-    // saved connection 7, opened from the tree: shop loaded (users, orders), audit still loading
+    // saved connection 7, opened from the tree: its default database shop loaded (users, orders), audit still loading
     const secondary = {
       7: {
         status: "connected",
+        database: "shop",
         databaseEntities: {
           shop: { status: "loaded", tables: [table("users"), table("orders")], routines: [] },
           audit: { status: "loading", tables: [], routines: [] },

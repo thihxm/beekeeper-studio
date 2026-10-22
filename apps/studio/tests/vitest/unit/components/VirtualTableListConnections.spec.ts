@@ -372,15 +372,16 @@ describe("connection level of the entity tree", () => {
 
   it("filter keeps unloaded secondary nodes collapsed", async () => {
     const { store, vm } = mountTree({ pins: [7, 9] });
-    connectC(store, { databaseList: ["audit", "secret", "shop", "staging"], inaccessibleDatabases: ["secret"] });
+    connectC(store, { databaseList: ["audit", "reports", "secret", "shop", "staging"], inaccessibleDatabases: ["secret"] });
     store.commit("connectionTree/databaseEntities", { id: 7, database: "staging", entities: { status: "error", tables: [], routines: [], error: "boom" } });
+    store.commit("connectionTree/databaseEntities", { id: 7, database: "reports", entities: { status: "loading", tables: [], routines: [] } });
     await settle();
 
     store.commit("filterQuery", "use");
     await settle();
 
-    // D is not connected; C's audit is idle, secret locked, staging failed
-    for (const key of ["connection::9", "connection::7::database::audit", "connection::7::database::secret", "connection::7::database::staging"]) {
+    // D is not connected; C's audit is idle, reports loading, secret locked, staging failed
+    for (const key of ["connection::9", "connection::7::database::audit", "connection::7::database::reports", "connection::7::database::secret", "connection::7::database::staging"]) {
       const node = item(vm, key);
       expect(vm.displayItems).toContain(node);
       expect(node.expanded).toBe(false);
@@ -416,5 +417,16 @@ describe("connection level of the entity tree", () => {
 
     expect(item(vm, "connection::7").expanded).toBe(false);
     expect(vm.displayItems.some((i: any) => i.connectionId === 7 && i.type === "table")).toBe(false);
+
+    // a click during the filter is what the tree keeps afterwards
+    store.commit("filterQuery", "use");
+    await settle();
+    vm.handleExpand(null, item(vm, "connection::7"));
+    await settle();
+    store.commit("filterQuery", null);
+    await settle();
+
+    expect(item(vm, "connection::7").expanded).toBe(true);
+    expect(vm.displayItems.some((i: any) => i.connectionId === 7 && i.entity?.name === "users")).toBe(true);
   });
 });
