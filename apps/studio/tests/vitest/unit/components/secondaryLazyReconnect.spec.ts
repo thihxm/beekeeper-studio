@@ -26,18 +26,21 @@ const settle = async () => {
   for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
 };
 
-function setup() {
-  const send = vi.fn(async (name: string) => (name.startsWith("conn/list") ? [] : null));
+function setup({ loadSaved = true } = {}) {
+  const send = vi.fn(async (name: string) => {
+    if (name === "appdb/saved/find") return [C, D];
+    return name.startsWith("conn/list") ? [] : null;
+  });
   Vue.prototype.$util = { send, sId: "w1" };
   const store = new Vuex.Store({
-    state: { tablesInitialLoaded: true, database: "a", databaseEntities: {}, inaccessibleDatabases: [], username: "tester" },
+    state: { tablesInitialLoaded: true, database: "a", databaseEntities: {}, inaccessibleDatabases: [], username: "tester", workspaceId: -1 },
     getters: {
       connectionContext: () => (id: number | null) => ({ connectionId: id, missing: false }),
       tablesFor: () => () => [],
     },
     modules: { connectionTree: ConnectionTreeModule },
   });
-  store.commit("connectionTree/savedConnections", [C, D]);
+  if (loadSaved) store.commit("connectionTree/savedConnections", [C, D]);
   const dispatch = vi.spyOn(store, "dispatch");
   const opened = () => dispatch.mock.calls.filter(([name]) => name === "connectionTree/open").map(([, id]) => id);
   const created = () => send.mock.calls.filter(([name]) => name === "conn/create").map(([, args]: any) => args.sId);
@@ -76,5 +79,20 @@ describe("restored tabs on saved connections", () => {
     expect(opened()).toEqual([7, 9]);
     expect(created()).toEqual(["w1::connection::7", "w1::connection::9"]);
     expect(store.getters["connectionTree/connection"](9).databaseEntities.reports.status).toBe("loaded");
+  });
+
+  it("an active tab restored before the saved connections load connects its connection", async () => {
+    const { store, created } = setup({ loadSaved: false });
+    mount(TabWithTable, {
+      localVue,
+      store,
+      propsData: { tab: { id: 1, tabType: "table", tableName: "users", targetConnectionId: 7, databaseName: "shop" }, active: true },
+    });
+    await settle();
+
+    const node = store.getters["connectionTree/connection"](7);
+    expect(node.error).toBeUndefined();
+    expect(node.status).toBe("connected");
+    expect(created()).toEqual(["w1::connection::7"]);
   });
 });
